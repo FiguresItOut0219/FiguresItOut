@@ -23,11 +23,7 @@ function validate(payload: ContactPayload) {
 }
 
 async function deliver(payload: ContactPayload) {
-  const endpoint = import.meta.env.VITE_CONTACT_ENDPOINT as string | undefined
-  if (!endpoint) {
-    await new Promise(resolve => window.setTimeout(resolve, 550))
-    return
-  }
+  const endpoint = (import.meta.env.VITE_CONTACT_ENDPOINT as string | undefined)?.trim() || '/api/contact'
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
