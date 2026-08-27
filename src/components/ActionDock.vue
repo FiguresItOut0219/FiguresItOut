@@ -1,23 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
-
-const action = computed(() => {
-  if (route.path === '/work/luma') return { href: '#reserve', label: 'Reserve a table', detail: 'Reservations' }
-  if (route.path === '/work/summit') return { href: '#quote', label: 'Get a free quote', detail: 'Same-day availability' }
-  if (route.path === '/work/northstar') return { href: '#contact', label: 'Start a project', detail: 'Tell us your brief' }
-  return { href: '#contact', label: 'Start a project', detail: 'Available for selected work' }
-})
+const action = { label: 'Start a project', detail: 'Available for selected work' }
 </script>
 
 <template>
-  <a class="action-dock" :class="`action-dock--${route.path.split('/').at(-1) || 'home'}`" :href="action.href">
+  <RouterLink class="action-dock" :class="`action-dock--${route.path.split('/').at(-1) || 'home'}`" :to="{ path: '/', hash: '#contact' }">
     <span class="action-dot" aria-hidden="true"></span>
     <span class="action-copy"><small>{{ action.detail }}</small><b>{{ action.label }}</b></span>
     <span class="action-arrow" aria-hidden="true">↗</span>
-  </a>
+  </RouterLink>
 </template>
 
 <style scoped>
