@@ -11,9 +11,9 @@ const { form, errors, status, isSubmitting, clearError, submit } = useContactFor
     <div class="pitch">
       <p class="eyebrow">Start a project</p>
       <h2>Have a design that needs to be built?</h2>
-      <p>Send me the design or project brief and I’ll tell you how I can help.</p>
-      <a href="mailto:hello@alexmercer.dev">hello@alexmercer.dev</a>
-      <small>Usually replies within 24 hours.</small>
+      <p>Send the design or project brief. I’ll reply with a clear next step and availability.</p>
+      <strong>Replies within 24 hours.</strong>
+      <small>Your message goes directly to FAN — no sales team or handoff.</small>
     </div>
 
     <form class="contact-form" novalidate @submit.prevent="submit">
@@ -40,8 +40,8 @@ const { form, errors, status, isSubmitting, clearError, submit } = useContactFor
 .contact { display: grid; grid-template-columns: 1.1fr 1fr; gap: clamp(4rem, 10vw, 12rem); background: #111; color: #f7f7f5; }
 .pitch h2 { max-width: 11ch; font: 500 clamp(3.35rem, 6.3vw, 6.8rem)/.95 var(--display); letter-spacing: -.045em; margin: 2.2rem 0 2rem; }
 .pitch > p:not(.eyebrow) { color: #b8b8b2; max-width: 30rem; }
-.pitch a { display: inline-block; color: var(--acid); margin-top: 3rem; font-weight: 700; text-underline-offset: .35rem; }
-.pitch small { display: block; color: #999; margin-top: 1rem; }
+.pitch strong { display: block; color: var(--acid); margin-top: 3rem; font: 700 .85rem var(--sans); }
+.pitch small { display: block; color: #999; margin-top: .75rem; }
 .contact-form { display: flex; flex-direction: column; gap: 1rem; padding: clamp(1.35rem, 2.5vw, 2.4rem); border: 1px solid #41413d; background: #181817; box-shadow: inset 0 1px #ffffff0a; }
 .form-intro { margin: 0 0 .8rem; color: #9e9e98; font-size: .84rem; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
