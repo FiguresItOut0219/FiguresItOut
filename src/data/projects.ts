@@ -1,0 +1,5 @@
+export interface Project {slug:string;name:string;type:string;description:string;image:string;theme:string}
+export const projects:Project[]=[
+{slug:'luma',name:'Luma',type:'Premium restaurant website',description:'A premium hospitality website focused on atmosphere, storytelling and reservations.',image:'https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=1800&q=85',theme:'Nocturne hospitality'},
+{slug:'northstar',name:'Northstar Studio',type:'Creative agency website',description:'A bold agency website designed around typography, project storytelling and subtle motion.',image:'https://images.unsplash.com/photo-1547891654-e66ed7ebb968?auto=format&fit=crop&w=1800&q=85',theme:'Editorial identity'},
+{slug:'summit',name:'Summit Heating & Air',type:'Local service landing page',description:'A conversion-focused landing page designed to turn local traffic into qualified leads.',image:'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1800&q=85',theme:'Trusted local service'}]
