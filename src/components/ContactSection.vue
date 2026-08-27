@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useContactForm } from '@/composables/useContactForm'
+import SelectMenu from '@/components/SelectMenu.vue'
 
 const serviceOptions = ['Landing Page', 'Marketing Website', 'Figma to Frontend', 'Website Updates', 'Ongoing Frontend Support', 'Something Else']
 const { form, errors, status, isSubmitting, clearError, submit } = useContactForm()
@@ -23,13 +24,7 @@ const { form, errors, status, isSubmitting, clearError, submit } = useContactFor
       </div>
       <label class="field">Agency / Company<input v-model="form.company" autocomplete="organization" placeholder="Your studio or company" /></label>
       <label class="field select-field" :class="{ 'has-error': errors.need }">What do you need?
-        <span class="select-wrap">
-          <select v-model="form.need" required :aria-invalid="Boolean(errors.need)" :aria-describedby="errors.need ? 'need-error' : undefined" @change="clearError('need')">
-            <option disabled value="">Choose a service</option>
-            <option v-for="option in serviceOptions" :key="option">{{ option }}</option>
-          </select>
-          <span aria-hidden="true">↓</span>
-        </span>
+        <SelectMenu v-model="form.need" label="What do you need?" placeholder="Choose a service" :options="serviceOptions" tone="dark" :invalid="Boolean(errors.need)" :described-by="errors.need ? 'need-error' : undefined" @update:model-value="clearError('need')" />
         <small v-if="errors.need" id="need-error" class="field-error">{{ errors.need }}</small>
       </label>
       <label class="field" :class="{ 'has-error': errors.message }">Message<textarea v-model="form.message" required rows="4" placeholder="A quick outline of the project, timeline and anything useful to know." :aria-invalid="Boolean(errors.message)" :aria-describedby="errors.message ? 'message-error' : undefined" @input="clearError('message')"></textarea><small v-if="errors.message" id="message-error" class="field-error">{{ errors.message }}</small></label>
@@ -51,17 +46,13 @@ const { form, errors, status, isSubmitting, clearError, submit } = useContactFor
 .form-intro { margin: 0 0 .8rem; color: #9e9e98; font-size: .84rem; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 .field { display: block; color: #f1f1ed; font: 700 .66rem/1.2 var(--sans); text-transform: uppercase; letter-spacing: .1em; }
-.field input, .field textarea, .field select { display: block; width: 100%; margin-top: .65rem; border: 1px solid #555550; border-radius: 2px; background: #20201e; color: #fff; outline: none; font: 500 .9rem/1.35 var(--sans); letter-spacing: 0; text-transform: none; transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
-.field input, .field select { min-height: 48px; padding: .8rem .9rem; }
+.field input, .field textarea { display: block; width: 100%; margin-top: .65rem; border: 1px solid #555550; border-radius: 2px; background: #20201e; color: #fff; outline: none; font: 500 .9rem/1.35 var(--sans); letter-spacing: 0; text-transform: none; transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
+.field input { min-height: 48px; padding: .8rem .9rem; }
 .field textarea { min-height: 118px; padding: .85rem .9rem; resize: vertical; }
 .field input::placeholder, .field textarea::placeholder { color: #969690; opacity: 1; }
-.field input:hover, .field textarea:hover, .field select:hover { border-color: #85857e; background: #242422; }
-.field input:focus, .field textarea:focus, .field select:focus { border-color: var(--acid); background: #262623; box-shadow: 0 0 0 3px #c8ff3d29; }
-.select-wrap { position: relative; display: block; }
-.select-wrap select { margin-top: .65rem; padding-right: 3.2rem; appearance: none; cursor: pointer; }
-.select-wrap span { position: absolute; top: 50%; right: 1rem; color: var(--acid); font-size: 1.15rem; pointer-events: none; transform: translateY(-50%); }
-.select-wrap select option { background: #20201e; color: #fff; }
-.has-error input, .has-error textarea, .has-error select { border-color: #ff7a74; }
+.field input:hover, .field textarea:hover { border-color: #85857e; background: #242422; }
+.field input:focus, .field textarea:focus { border-color: var(--acid); background: #262623; box-shadow: 0 0 0 3px #c8ff3d29; }
+.has-error input, .has-error textarea { border-color: #ff7a74; }
 .field-error { display: block; margin-top: .45rem; color: #ff9d98; font-size: .72rem; letter-spacing: 0; text-transform: none; }
 .submit-button { min-height: 50px; display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: .7rem; padding: .8rem 1rem; border: 1px solid var(--acid); background: var(--acid); color: #111; font: 700 .78rem var(--sans); transition: background .18s ease, transform .18s ease; }
 .submit-button:hover:not(:disabled) { background: #f7f7f5; transform: translateY(-2px); }
