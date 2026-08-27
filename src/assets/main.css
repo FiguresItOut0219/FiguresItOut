@@ -4,3 +4,16 @@
 .summit .form-section select { min-height: 52px; padding: .8rem 2.8rem .8rem .9rem; appearance: none; border: 1px solid #7e959f; border-radius: 0; background-color: #fff; background-image: linear-gradient(45deg, transparent 50%, #f26032 50%), linear-gradient(135deg, #f26032 50%, transparent 50%); background-position: calc(100% - 18px) 50%, calc(100% - 12px) 50%; background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; cursor: pointer; box-shadow: inset 0 -2px 0 #f260321f; transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
 .summit .form-section select:hover { border-color: #f26032; transform: translateY(-1px); }
 .summit .form-section select:focus { border-color: #f26032; box-shadow: 0 0 0 3px #f2603233; }
+
+/* Northstar's work list should advertise its preview interaction before visitors discover it by chance. */
+@media (hover: hover) and (pointer: fine) {
+  .north .work article { cursor: pointer; transition: background-color 150ms ease, padding-inline 180ms var(--ease); }
+  .north .work article:hover { padding-left: .75rem; padding-right: .75rem; background: #191919; }
+  .north .work article:hover h2 { color: #9ca9ff; }
+  .north .work article:hover .preview { opacity: 1; transform: scale(1) rotate(0); }
+  .north .work article:hover .num { color: #c8ff3d; }
+}
+.north .work article:focus-within { background: #191919; outline: 2px solid #c8ff3d; outline-offset: -2px; }
+.north .work article:focus-within .preview { opacity: 1; transform: scale(1) rotate(0); }
+.north .work article:focus-within h2 { color: #9ca9ff; }
+@media (prefers-reduced-motion: reduce) { .north .work article { transition: none; }.north .work article:hover { padding-left: 0; padding-right: 0; } }

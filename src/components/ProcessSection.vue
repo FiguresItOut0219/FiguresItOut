@@ -48,24 +48,24 @@ onBeforeUnmount(() => observer?.disconnect())
 </template>
 
 <style scoped>
-.process { overflow: hidden; }
+.process { overflow: hidden; background: #f4f4f0; }
 .process-heading { position: relative; }
 .process-index { position: absolute; right: 0; bottom: 2.2rem; color: var(--muted); font: 600 .64rem/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; }
 .process-index span { display: block; margin-top: .7rem; color: #111; }
 .steps { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); padding: 0; list-style: none; border-top: 1px solid; }
 .steps::before { content: ''; position: absolute; top: -1px; left: 0; width: 100%; height: 2px; background: var(--acid); transform: scaleX(0); transform-origin: left; transition: transform .9s var(--ease); }
 .is-revealed .steps::before { transform: scaleX(1); }
-.steps li { position: relative; min-height: 22rem; padding: 1.5rem 2rem 3.5rem 0; border-right: 1px solid var(--line); opacity: 0; transform: translateY(2rem); transition: opacity .55s var(--ease) var(--delay), transform .55s var(--ease) var(--delay), background .25s ease; }
+.steps li { position: relative; min-height: 23rem; padding: 1.5rem 2rem 3.5rem 0; border-right: 1px solid var(--line); opacity: 0; transform: translateY(2rem); transition: opacity .55s var(--ease) var(--delay), transform .55s var(--ease) var(--delay); }
 .is-revealed .steps li { opacity: 1; transform: none; }
 .steps li + li { padding-left: 2rem; }
-.steps li:hover { background: #efefea; }
-.step-number { display: block; font-size: .65rem; color: var(--muted); }
-.step-marker { display: block; width: 7px; height: 7px; margin: 1.8rem 0 auto; border-radius: 50%; background: #b7b7b0; transition: background .2s ease, transform .2s ease; }
-.steps li:hover .step-marker { background: var(--acid); transform: scale(1.65); }
-.steps h3 { margin: 4.5rem 0 0; font: 500 1.8rem var(--display); }
-.steps p { max-width: 16rem; color: var(--muted); font-size: .88rem; }
-.step-action { position: absolute; right: 1.3rem; bottom: 1.2rem; color: var(--muted); opacity: 0; transform: translateX(-.5rem); transition: opacity .2s ease, transform .2s ease; }
-.steps li:hover .step-action { opacity: 1; transform: none; }
+.steps li:nth-child(2) { background: #ebebe5; }
+.steps li:nth-child(3) { background: #f0f0eb; }
+.step-number { display: block; color: #4b4b47; font: 700 .68rem var(--sans); letter-spacing: .08em; }
+.step-marker { display: block; width: 9px; height: 9px; margin: 1.8rem 0 auto; border-radius: 50%; background: #9b9b94; box-shadow: 0 0 0 4px #deded7; }
+.steps li:nth-child(2) .step-marker { background: #8dad12; box-shadow: 0 0 0 4px #dcecb1; }
+.steps h3 { max-width: 11ch; margin: 4.3rem 0 1.1rem; font: 500 clamp(2rem, 2.45vw, 2.85rem)/.94 var(--display); letter-spacing: -.035em; }
+.steps p { max-width: 18rem; margin: 0; color: #4e4e49; font-size: .95rem; line-height: 1.55; }
+.step-action { position: absolute; right: 1.3rem; bottom: 1.2rem; color: #171714; font-size: 1.25rem; }
 .note { font: 500 clamp(2rem, 4vw, 4.8rem)/1 var(--display); letter-spacing: -.04em; margin: 6rem 0 0; opacity: 0; transform: translateY(1rem); transition: opacity .6s var(--ease) .4s, transform .6s var(--ease) .4s; }
 .is-revealed .note { opacity: 1; transform: none; }
 .note i { font-weight: 400; }
