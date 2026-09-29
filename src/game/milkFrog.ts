@@ -14,7 +14,7 @@ export function createMilkFrog(): MilkFrog {
   const yellow = new THREE.MeshStandardMaterial({ color: 0xf0bf50, roughness: .78 })
   const limbYellow = new THREE.MeshStandardMaterial({ color: 0xe6af3d, roughness: .8 })
   const cream = new THREE.MeshStandardMaterial({ color: 0xf7e9c2, roughness: .9 })
-  const brown = new THREE.MeshStandardMaterial({ color: 0x665f49, roughness: .92 })
+  const brown = new THREE.MeshStandardMaterial({ color: 0x514d40, roughness: .92 })
   const white = new THREE.MeshStandardMaterial({ color: 0xfff8df, roughness: .42 })
   const iris = new THREE.MeshStandardMaterial({ color: 0x7da865, roughness: .38 })
   const pupil = new THREE.MeshStandardMaterial({ color: 0x1b3026, roughness: .27 })
@@ -30,18 +30,54 @@ export function createMilkFrog(): MilkFrog {
     return mesh
   }
 
-  // One continuous pear-shaped surface keeps the head and round belly connected.
+  function armGeometry(side: number) {
+    const rings = [
+      { x: .05, y: .06, radius: .12 },
+      { x: .15, y: -.14, radius: .17 },
+      { x: .26, y: -.35, radius: .17 },
+      { x: .32, y: -.56, radius: .145 },
+      { x: .35, y: -.76, radius: .12 },
+      { x: .35, y: -.92, radius: .11 },
+    ]
+    const segments = 16
+    const vertices: number[] = []
+    const indices: number[] = []
+    for (const ring of rings) {
+      for (let i = 0; i < segments; i++) {
+        const angle = i / segments * Math.PI * 2
+        vertices.push(side * ring.x + Math.cos(angle) * ring.radius, ring.y, Math.sin(angle) * ring.radius)
+      }
+    }
+    for (let ring = 0; ring < rings.length - 1; ring++) {
+      for (let i = 0; i < segments; i++) {
+        const a = ring * segments + i
+        const next = ring * segments + (i + 1) % segments
+        const b = (ring + 1) * segments + i
+        const nextB = (ring + 1) * segments + (i + 1) % segments
+        indices.push(a, next, b, next, nextB, b)
+      }
+    }
+    const geometry = new THREE.BufferGeometry()
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3))
+    geometry.setIndex(indices)
+    geometry.computeVertexNormals()
+    return geometry
+  }
+
+  // A sampled round crown keeps the head soft rather than ending in a cone tip.
   const profile = [
     [0, .45], [.39, .45], [.62, .54], [.77, .76], [.83, 1.09],
-    [.81, 1.38], [.71, 1.68], [.57, 1.95], [.43, 2.22],
-    [.33, 2.48], [.32, 2.7], [.27, 2.87], [.15, 2.97], [0, 2.99],
+    [.81, 1.38], [.72, 1.68], [.6, 1.95], [.47, 2.22],
+    [.4, 2.47], [.4, 2.68], [.35, 2.8], [.26, 2.9], [.13, 2.96], [0, 2.98],
   ]
+  const roundedProfile = new THREE.SplineCurve(profile.map(([radius, height]) => new THREE.Vector2(radius, height)))
   const body = new THREE.Mesh(
-    new THREE.LatheGeometry(profile.map(([radius, height]) => new THREE.Vector2(radius, height)), 40),
+    new THREE.LatheGeometry(roundedProfile.getPoints(84).map(point => new THREE.Vector2(Math.max(0, point.x), point.y)), 48),
     yellow,
   )
   body.scale.z = .82
   body.castShadow = true
+  body.receiveShadow = true
   bodyRig.add(body)
 
   // The pale belly is a shallow raised patch, matching the reference's soft edge.
@@ -58,7 +94,7 @@ export function createMilkFrog(): MilkFrog {
 
   // The little tail is visible when the body turns while dodging.
   const tail = new THREE.Mesh(new THREE.ConeGeometry(.16, .38, 12), yellow)
-  tail.position.set(0, .94, -.7)
+  tail.position.set(0, .9, -.68)
   tail.rotation.x = -Math.PI / 2
   tail.castShadow = true
   bodyRig.add(tail)
@@ -67,11 +103,12 @@ export function createMilkFrog(): MilkFrog {
   const legs: THREE.Group[] = []
   for (const side of [-1, 1]) {
     const arm = new THREE.Group()
-    arm.position.set(side * .6, 1.89, -.02)
+    arm.position.set(side * .52, 1.68, -.02)
     bodyRig.add(arm)
-    const upper = oval(arm, limbYellow, side * .18, -.47, .02, .18, .56, .18)
-    upper.rotation.z = side * .2
-    oval(arm, brown, side * .29, -.95, .065, .16, .18, .17)
+    const upper = new THREE.Mesh(armGeometry(side), yellow)
+    upper.castShadow = true
+    arm.add(upper)
+    oval(arm, brown, side * .35, -.92, -.1, .19, .19, .2)
     arms.push(arm)
 
     const leg = new THREE.Group()
@@ -79,19 +116,22 @@ export function createMilkFrog(): MilkFrog {
     root.add(leg)
     oval(leg, limbYellow, 0, -.16, 0, .2, .29, .23)
     oval(leg, brown, side * .04, -.43, .19, .27, .105, .3)
+    oval(leg, brown, side * .04, -.43, -.22, .29, .13, .24)
     for (let toe = -1; toe <= 1; toe++) {
       oval(leg, brown, side * .04 + toe * .16, -.45, .36, .11, .06, .15)
     }
     legs.push(leg)
   }
 
-  root.rotation.y = -.16
+  // The model's face is built toward +Z; turn it toward the road's -Z direction.
+  const forwardAngle = Math.PI - .28
+  root.rotation.y = forwardAngle
 
   function animate(distance: number, jumpHeight: number, dodge: number, running: boolean) {
     const cadence = running && jumpHeight < .08 ? Math.sin(distance * 2.4) : 0
     root.position.y = jumpHeight
     root.rotation.z += ((-dodge * .17) - root.rotation.z) * .22
-    root.rotation.y += ((-.16 + dodge * .11) - root.rotation.y) * .18
+    root.rotation.y += ((forwardAngle + dodge * .09) - root.rotation.y) * .18
     bodyRig.position.y = running && jumpHeight < .08 ? Math.abs(cadence) * .045 : 0
     bodyRig.rotation.x = jumpHeight > .1 ? -.1 : .02
     arms[0].rotation.x = jumpHeight > .1 ? -1.2 : cadence * .6
