@@ -3,10 +3,15 @@ import { onBeforeUnmount, onMounted, shallowRef, useTemplateRef } from 'vue'
 import { RunnerGame, type GameSnapshot } from '@/game/runner'
 
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
-const snapshot = shallowRef<GameSnapshot>({ phase: 'ready', score: 0, coins: 0, best: 0, speed: 14 })
+const snapshot = shallowRef<GameSnapshot>({ phase: 'ready', score: 0, coins: 0, best: 0, speed: 14, elapsed: 0, lives: 3 })
 let game: RunnerGame | undefined
 let observer: ResizeObserver | undefined
 let touchStart: { x: number; y: number } | undefined
+
+function runTime(seconds: number) {
+  const value = Math.floor(seconds)
+  return `${Math.floor(value / 60)}:${String(value % 60).padStart(2, '0')}`
+}
 
 function onKey(event: KeyboardEvent) {
   const key = event.key.toLowerCase()
@@ -58,7 +63,7 @@ onBeforeUnmount(() => {
   <section class="runner" aria-label="跑酷游戏">
     <div class="runner-head">
       <RouterLink class="back-link" to="/game" aria-label="返回游戏列表"><span aria-hidden="true">←</span><span class="back-copy">游戏列表</span></RouterLink>
-      <div class="runner-title"><span class="runner-marker" aria-hidden="true"></span><span>奶蛙 RUN</span><small>01 / ENDLESS</small></div>
+      <div class="runner-title"><span class="runner-marker" aria-hidden="true"></span><span>奶蛙 RUN</span><small>无限挑战</small></div>
       <button v-if="snapshot.phase === 'running' || snapshot.phase === 'paused'" class="pause-button" type="button" @click="game?.togglePause()">
         {{ snapshot.phase === 'paused' ? '继续' : '暂停' }}
       </button>
@@ -68,16 +73,17 @@ onBeforeUnmount(() => {
       <canvas ref="canvas" class="runner-canvas" aria-label="奶蛙在三条跑道上跑酷的三维场景" />
       <div class="runner-hud" aria-live="off">
         <div><small>分数</small><strong>{{ snapshot.score.toLocaleString() }}</strong></div>
+        <div><small>时长</small><strong>{{ runTime(snapshot.elapsed) }}</strong></div>
+        <div><small>机会</small><strong>{{ snapshot.lives }}</strong></div>
         <div><small>金币</small><strong>{{ snapshot.coins }}</strong></div>
-        <div><small>最高</small><strong>{{ snapshot.best.toLocaleString() }}</strong></div>
       </div>
 
       <div v-if="snapshot.phase !== 'running'" class="runner-overlay">
         <div class="overlay-content">
-          <p class="overlay-kicker">{{ snapshot.phase === 'over' ? 'RUN COMPLETE' : snapshot.phase === 'paused' ? 'ON HOLD' : 'READY, RUNNER?' }}</p>
+          <p class="overlay-kicker">{{ snapshot.phase === 'over' ? 'GAME OVER' : snapshot.phase === 'paused' ? 'ON HOLD' : 'READY, RUNNER?' }}</p>
           <h2>{{ snapshot.phase === 'over' ? '再来一局？' : snapshot.phase === 'paused' ? '暂停中' : '向前跑。' }}</h2>
-          <p v-if="snapshot.phase === 'over'">本局得分 {{ snapshot.score.toLocaleString() }} · 收集 {{ snapshot.coins }} 枚金币</p>
-          <p v-else-if="snapshot.phase === 'ready'">左右移动，跳过矮箱，避开高墙，收集金币。</p>
+          <p v-if="snapshot.phase === 'over'">坚持 {{ runTime(snapshot.elapsed) }} · 得分 {{ snapshot.score.toLocaleString() }} · 最高 {{ snapshot.best.toLocaleString() }}</p>
+          <p v-else-if="snapshot.phase === 'ready'">三次机会。跳过矮栏杆，闪开高栏杆；越跑越快，难度会逐渐稳定。</p>
           <p v-else>准备好就继续。</p>
           <button class="start-button" type="button" @click="snapshot.phase === 'paused' ? game?.togglePause() : game?.start()">
             {{ snapshot.phase === 'over' ? '重新开始' : snapshot.phase === 'paused' ? '继续游戏' : '开始游戏' }} <span aria-hidden="true">↗</span>

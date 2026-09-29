@@ -9,14 +9,17 @@ export interface GameSnapshot {
   coins: number
   best: number
   speed: number
+  elapsed: number
+  lives: number
 }
 
-type Item = { lane: number; z: number; type: 'crate' | 'wall' | 'coin'; mesh: THREE.Group; resolved?: boolean }
+type Item = { lane: number; z: number; type: 'lowRail' | 'highRail' | 'coin'; mesh: THREE.Group; resolved?: boolean }
 
 const LANES = [-2.45, 0, 2.45]
 const PLAYER_Z = 2
 const SPAWN_Z = -82
 const BEST_KEY = 'fan-runner-best'
+const MAX_DIFFICULTY_AT = 150
 
 function bestScore() {
   try { return Number(localStorage.getItem(BEST_KEY)) || 0 } catch { return 0 }
@@ -47,7 +50,10 @@ export class RunnerGame {
   private coins = 0
   private best = bestScore()
   private speed = 14
-  private nextSpawn = 12
+  private elapsed = 0
+  private lives = 3
+  private hitCooldown = 0
+  private nextSpawn = 20
   private items: Item[] = []
 
   constructor(canvas: HTMLCanvasElement, onChange: (snapshot: GameSnapshot) => void) {
@@ -156,7 +162,11 @@ export class RunnerGame {
     this.score = 0
     this.coins = 0
     this.speed = 14
-    this.nextSpawn = 12
+    this.elapsed = 0
+    this.lives = 3
+    this.hitCooldown = 0
+    this.nextSpawn = 20
+    this.frog.root.visible = true
     this.lastTime = 0
     this.report()
   }
@@ -189,18 +199,19 @@ export class RunnerGame {
   }
 
   private report() {
-    this.onChange({ phase: this.phase, score: this.score, coins: this.coins, best: this.best, speed: Math.round(this.speed) })
+    this.onChange({ phase: this.phase, score: this.score, coins: this.coins, best: this.best, speed: Math.round(this.speed), elapsed: this.elapsed, lives: this.lives })
   }
 
   private makeItem(lane: number, z: number, type: Item['type']): Item {
     const group = new THREE.Group()
     group.position.set(LANES[lane], 0, z)
-    if (type === 'crate') {
-      this.box(group, 1.45, 1.25, 1.1, 0xe88356, 0, .62, 0, true)
-      this.box(group, 1.53, .13, 1.18, 0xffbd84, 0, 1.22, 0)
-    } else if (type === 'wall') {
-      this.box(group, 1.75, 3.3, .65, 0xd6634e, 0, 1.65, 0, true)
-      this.box(group, 1.9, .17, .78, 0xffb881, 0, 3.25, 0)
+    if (type === 'lowRail') {
+      for (const x of [-.83, .83]) this.box(group, .18, 1.15, .22, 0xe1774a, x, .58, 0, true)
+      this.box(group, 1.85, .24, .26, 0xffbd81, 0, 1.03, 0, true)
+      this.box(group, 1.85, .12, .28, 0xe1774a, 0, .72, 0)
+    } else if (type === 'highRail') {
+      for (const x of [-.83, .83]) this.box(group, .2, 2.65, .24, 0xb94e45, x, 1.33, 0, true)
+      for (const y of [.72, 1.5, 2.35]) this.box(group, 1.9, .2, .28, 0xffa577, 0, y, 0, true)
     } else {
       const material = new THREE.MeshStandardMaterial({ color: 0xffd568, metalness: .58, roughness: .26, emissive: 0x684400, emissiveIntensity: .35 })
       const coin = new THREE.Mesh(new THREE.TorusGeometry(.43, .12, 8, 18), material)
@@ -225,6 +236,7 @@ export class RunnerGame {
     const dt = this.lastTime ? Math.min((time - this.lastTime) / 1000, .05) : 0
     this.lastTime = time
     if (this.phase === 'running') this.update(dt)
+    this.frog.root.visible = this.phase !== 'running' || this.hitCooldown <= 0 || Math.floor(time / 90) % 2 === 0
     this.frog.animate(this.distance, this.jumpHeight, LANES[this.lane] - this.lanePosition, this.phase === 'running')
     this.render()
     if (time - this.lastReport > 150) { this.report(); this.lastReport = time }
@@ -232,9 +244,12 @@ export class RunnerGame {
   }
 
   private update(dt: number) {
+    this.elapsed += dt
+    this.hitCooldown = Math.max(0, this.hitCooldown - dt)
+    const difficulty = Math.min(1, this.elapsed / MAX_DIFFICULTY_AT)
+    this.speed = 14 + 10 * difficulty
     const step = this.speed * dt
     this.distance += step
-    this.speed = Math.min(27, 14 + this.distance / 160)
     this.score = Math.floor(this.distance * 3) + this.coins * 25
     this.lanePosition += (LANES[this.lane] - this.lanePosition) * Math.min(1, dt * 12)
     this.frog.root.position.x = this.lanePosition
@@ -256,12 +271,17 @@ export class RunnerGame {
 
     this.nextSpawn -= step
     if (this.nextSpawn <= 0) {
-      const lane = Math.floor(Math.random() * 3)
-      const type = Math.random() < .65 ? 'crate' : 'wall'
-      this.items.push(this.makeItem(lane, SPAWN_Z, type))
-      const coinLane = Math.random() < .65 ? (lane + 1 + Math.floor(Math.random() * 2)) % 3 : lane
-      this.items.push(this.makeItem(coinLane, SPAWN_Z - 5, 'coin'))
-      this.nextSpawn = 12 + Math.random() * 7
+      const safeLane = Math.floor(Math.random() * 3)
+      const blockedLanes = [0, 1, 2].filter(lane => lane !== safeLane)
+      const barrierCount = Math.random() < difficulty * .38 ? 2 : 1
+      for (let i = 0; i < barrierCount; i++) {
+        const lane = blockedLanes.splice(Math.floor(Math.random() * blockedLanes.length), 1)[0]!
+        const type = Math.random() < .78 - difficulty * .22 ? 'lowRail' : 'highRail'
+        this.items.push(this.makeItem(lane, SPAWN_Z, type))
+      }
+      if (Math.random() < .7) this.items.push(this.makeItem(safeLane, SPAWN_Z - 5, 'coin'))
+      const interval = 2.2 - difficulty * .9 + Math.random() * .35
+      this.nextSpawn += this.speed * interval
     }
 
     for (const item of this.items) {
@@ -271,9 +291,14 @@ export class RunnerGame {
       if (item.resolved || item.z < PLAYER_Z - .7 || item.z > PLAYER_Z + .7 || item.lane !== this.lane) continue
       item.resolved = true
       if (item.type === 'coin') { this.coins++; continue }
-      if (item.type === 'wall' || this.jumpHeight < 1.05) {
-        this.phase = 'over'
-        if (this.score > this.best) { this.best = this.score; saveBest(this.best) }
+      if ((item.type === 'highRail' || this.jumpHeight < 1.05) && this.hitCooldown <= 0) {
+        this.lives--
+        this.hitCooldown = 1.25
+        if (this.lives <= 0) {
+          this.phase = 'over'
+          this.frog.root.visible = true
+          if (this.score > this.best) { this.best = this.score; saveBest(this.best) }
+        }
         this.report()
       }
     }
