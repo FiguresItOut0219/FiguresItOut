@@ -6,4 +6,4 @@ import ActionDock from '@/components/ActionDock.vue'
 const route = useRoute()
 useSeo(route)
 </script>
-<template><a class="skip-link" href="#main">Skip to content</a><RouterView /><ActionDock v-if="route.path !== '/game'" /></template>
+<template><a class="skip-link" href="#main">Skip to content</a><RouterView /><ActionDock v-if="!route.path.startsWith('/game')" /></template>

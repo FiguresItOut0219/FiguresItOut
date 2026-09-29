@@ -11,7 +11,7 @@ export interface GameSnapshot {
   speed: number
 }
 
-type Item = { lane: number; z: number; type: 'crate' | 'wall' | 'coin'; mesh: THREE.Group; taken?: boolean }
+type Item = { lane: number; z: number; type: 'crate' | 'wall' | 'coin'; mesh: THREE.Group; resolved?: boolean }
 
 const LANES = [-2.45, 0, 2.45]
 const PLAYER_Z = 2
@@ -140,6 +140,7 @@ export class RunnerGame {
     this.camera.position.set(0, width < 600 ? 4.2 : 4.4, width < 600 ? 13.5 : 11.5)
     this.camera.lookAt(0, 1.25, -14)
     this.camera.updateProjectionMatrix()
+    this.frog.root.scale.setScalar(width < 600 ? .83 : .74)
     this.render()
   }
 
@@ -267,8 +268,8 @@ export class RunnerGame {
       item.z += step
       item.mesh.position.z = item.z
       if (item.type === 'coin') item.mesh.rotation.y += dt * 2.5
-      if (item.taken || item.z < PLAYER_Z - .7 || item.z > PLAYER_Z + .7 || item.lane !== this.lane) continue
-      item.taken = true
+      if (item.resolved || item.z < PLAYER_Z - .7 || item.z > PLAYER_Z + .7 || item.lane !== this.lane) continue
+      item.resolved = true
       if (item.type === 'coin') { this.coins++; continue }
       if (item.type === 'wall' || this.jumpHeight < 1.05) {
         this.phase = 'over'
@@ -277,7 +278,8 @@ export class RunnerGame {
       }
     }
     this.items = this.items.filter(item => {
-      if (item.z <= PLAYER_Z + 10 && !item.taken) return true
+      // Passed barriers remain in the scene until they move behind the runner.
+      if (item.z <= PLAYER_Z + 7 && !(item.type === 'coin' && item.resolved)) return true
       this.removeItem(item)
       return false
     })

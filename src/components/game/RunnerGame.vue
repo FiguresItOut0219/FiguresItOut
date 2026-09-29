@@ -57,6 +57,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="runner" aria-label="跑酷游戏">
     <div class="runner-head">
+      <RouterLink class="back-link" to="/game" aria-label="返回游戏列表"><span aria-hidden="true">←</span><span class="back-copy">游戏列表</span></RouterLink>
       <div class="runner-title"><span class="runner-marker" aria-hidden="true"></span><span>奶蛙 RUN</span><small>01 / ENDLESS</small></div>
       <button v-if="snapshot.phase === 'running' || snapshot.phase === 'paused'" class="pause-button" type="button" @click="game?.togglePause()">
         {{ snapshot.phase === 'paused' ? '继续' : '暂停' }}
@@ -98,14 +99,18 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.runner { overflow: hidden; border: 1px solid #2e3c3e; background: #111c22; color: #f3f6ef; font-family: var(--sans); }
-.runner-head { min-height: 61px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem 1.35rem; border-bottom: 1px solid #34464a; }
+.runner { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column; width: 100%; height: 100dvh; overflow: hidden; background: #111c22; color: #f3f6ef; font-family: var(--sans); }
+.runner-head { flex: 0 0 auto; min-height: 61px; display: flex; align-items: center; gap: 1rem; padding: calc(.7rem + env(safe-area-inset-top)) max(1.35rem, env(safe-area-inset-right)) .7rem max(1.35rem, env(safe-area-inset-left)); border-bottom: 1px solid #34464a; }
+.back-link { display: inline-flex; align-items: center; gap: .5rem; min-width: 44px; min-height: 44px; color: #e3ece8; font-size: .76rem; font-weight: 600; text-decoration: none; }
+.back-link:hover { color: var(--acid); }
+.back-link span:first-child { font-size: 1.2rem; }
 .runner-title { display: flex; align-items: center; gap: .7rem; font-size: .86rem; font-weight: 700; letter-spacing: .13em; }
+.runner-title { margin-right: auto; }
 .runner-title small { margin-left: .8rem; color: #91a4a4; font-size: .61rem; font-weight: 600; letter-spacing: .14em; }
 .runner-marker { width: .75rem; height: .75rem; background: var(--acid); transform: rotate(45deg); }
-.pause-button { min-height: 38px; padding: .4rem .9rem; border: 1px solid #708581; background: transparent; color: #fff; }
+.pause-button { min-height: 44px; padding: .4rem .9rem; border: 1px solid #708581; background: transparent; color: #fff; }
 .pause-button:hover { border-color: var(--acid); }
-.runner-stage { position: relative; height: clamp(410px, 62vw, 620px); touch-action: none; }
+.runner-stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; touch-action: none; }
 .runner-canvas { display: block; width: 100%; height: 100%; }
 .runner-hud { position: absolute; top: 1rem; left: 1.2rem; right: 1.2rem; display: flex; gap: clamp(1.2rem, 4vw, 3.5rem); pointer-events: none; }
 .runner-hud div { display: grid; gap: .25rem; min-width: 55px; }
@@ -118,7 +123,7 @@ onBeforeUnmount(() => {
 .overlay-content p:not(.overlay-kicker) { color: #d2ded9; font-size: .9rem; }
 .start-button { display: inline-flex; justify-content: space-between; align-items: center; gap: 2rem; min-height: 50px; margin-top: 1rem; padding: .65rem 1.15rem; border: 1px solid var(--acid); background: var(--acid); color: #121c16; font-weight: 700; }
 .start-button:hover { background: #e3ff9a; }
-.runner-footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 68px; padding: .75rem 1.2rem; border-top: 1px solid #34464a; }
+.runner-footer { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 1rem; min-height: 68px; padding: .75rem max(1.2rem, env(safe-area-inset-right)) calc(.75rem + env(safe-area-inset-bottom)) max(1.2rem, env(safe-area-inset-left)); border-top: 1px solid #34464a; }
 .controls-hint { margin: 0; color: #becfca; font-size: .74rem; }
 .controls-hint span { margin-right: .8rem; color: var(--acid); font-weight: 700; }
 .game-speed { flex-shrink: 0; color: #8fa6a1; font-size: .67rem; letter-spacing: .12em; }
@@ -127,5 +132,6 @@ onBeforeUnmount(() => {
 .touch-controls button:hover { border-color: var(--acid); }
 @media (min-width: 851px) { .touch-controls { display: none; } }
 @media (max-width: 850px) { .runner-footer { flex-wrap: wrap; }.controls-hint { width: 100%; }.game-speed { margin-left: auto; } }
-@media (max-width: 500px) { .runner-stage { height: 470px; }.runner-title small { display: none; }.runner-hud { gap: 1rem; }.runner-overlay { padding: .7rem; }.overlay-content { padding: .9rem 1rem; }.controls-hint { display: none; }.runner-footer { padding: .75rem; }.game-speed { font-size: .6rem; } }
+@media (max-width: 600px) { .runner-overlay { align-items: flex-start; padding-top: 5.2rem; background: linear-gradient(#0c151b55, transparent 65%); }.overlay-content { width: min(300px, 100%); } }
+@media (max-width: 500px) { .runner-head { gap: .5rem; padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right)); }.back-copy, .runner-title small { display: none; }.runner-title { font-size: .78rem; }.runner-hud { gap: 1rem; }.runner-overlay { padding: 5.2rem .7rem .7rem; }.overlay-content { padding: .9rem 1rem; }.controls-hint { display: none; }.game-speed { font-size: .6rem; } }
 </style>
