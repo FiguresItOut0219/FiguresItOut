@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, shallowRef, useTemplateRef } from 'vue'
+import { onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef } from 'vue'
 import { RunnerGame, type GameSnapshot } from '@/game/runner'
 
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
-const snapshot = shallowRef<GameSnapshot>({ phase: 'ready', score: 0, coins: 0, best: 0, speed: 14, elapsed: 0, lives: 3 })
+const snapshot = shallowRef<GameSnapshot>({ phase: 'ready', score: 0, coins: 0, best: 0, speed: 19, elapsed: 0, lives: 3 })
+const hitActive = ref(false)
+const hitSequence = ref(0)
 let game: RunnerGame | undefined
 let observer: ResizeObserver | undefined
-let touchStart: { x: number; y: number } | undefined
+let hitTimer: ReturnType<typeof setTimeout> | undefined
+let touchStart: { x: number; y: number; id: number } | undefined
 
 function runTime(seconds: number) {
   const value = Math.floor(seconds)
@@ -25,17 +28,28 @@ function onKey(event: KeyboardEvent) {
 
 function onTouchStart(event: TouchEvent) {
   const touch = event.changedTouches[0]
-  touchStart = { x: touch.clientX, y: touch.clientY }
+  touchStart = { x: touch.clientX, y: touch.clientY, id: touch.identifier }
+}
+
+function onTouchMove(event: TouchEvent) {
+  if (!touchStart) return
+  const touch = Array.from(event.changedTouches).find(item => item.identifier === touchStart?.id)
+  if (!touch) return
+  const dx = touch.clientX - touchStart.x
+  const dy = touch.clientY - touchStart.y
+  if (Math.abs(dx) > 42 && Math.abs(dx) > Math.abs(dy)) {
+    game?.move(dx > 0 ? 1 : -1)
+    touchStart.x = touch.clientX
+    touchStart.y = touch.clientY
+  } else if (dy < -42 && Math.abs(dy) > Math.abs(dx)) {
+    game?.jump()
+    touchStart.x = touch.clientX
+    touchStart.y = touch.clientY
+  }
 }
 
 function onTouchEnd(event: TouchEvent) {
-  if (!touchStart) return
-  const touch = event.changedTouches[0]
-  const dx = touch.clientX - touchStart.x
-  const dy = touch.clientY - touchStart.y
-  if (Math.abs(dx) > 35 && Math.abs(dx) > Math.abs(dy)) game?.move(dx > 0 ? 1 : -1)
-  else if (dy < -35 || (Math.abs(dx) < 20 && Math.abs(dy) < 20)) game?.jump()
-  touchStart = undefined
+  if (Array.from(event.changedTouches).some(item => item.identifier === touchStart?.id)) touchStart = undefined
 }
 
 function onVisibility() {
@@ -44,7 +58,18 @@ function onVisibility() {
 
 onMounted(() => {
   if (!canvas.value) return
-  game = new RunnerGame(canvas.value, value => { snapshot.value = value })
+  game = new RunnerGame(canvas.value, value => {
+    if (value.lives < snapshot.value.lives) {
+      hitSequence.value++
+      hitActive.value = true
+      clearTimeout(hitTimer)
+      hitTimer = setTimeout(() => { hitActive.value = false }, 650)
+    } else if (value.lives > snapshot.value.lives) {
+      hitActive.value = false
+      clearTimeout(hitTimer)
+    }
+    snapshot.value = value
+  })
   observer = new ResizeObserver(() => game?.resize())
   observer.observe(canvas.value)
   window.addEventListener('keydown', onKey)
@@ -54,6 +79,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   game?.destroy()
   observer?.disconnect()
+  clearTimeout(hitTimer)
   window.removeEventListener('keydown', onKey)
   document.removeEventListener('visibilitychange', onVisibility)
 })
@@ -69,8 +95,9 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-    <div class="runner-stage" @touchstart.passive="onTouchStart" @touchend.passive="onTouchEnd">
+    <div class="runner-stage" :class="{ 'is-hit': hitActive }" @touchstart.passive="onTouchStart" @touchmove.passive="onTouchMove" @touchend.passive="onTouchEnd" @touchcancel.passive="onTouchEnd">
       <canvas ref="canvas" class="runner-canvas" aria-label="奶蛙在三条跑道上跑酷的三维场景" />
+      <div v-if="hitActive" :key="hitSequence" class="damage-fx" aria-hidden="true"><span>碰撞 −1</span></div>
       <div class="runner-hud" aria-live="off">
         <div><small>分数</small><strong>{{ snapshot.score.toLocaleString() }}</strong></div>
         <div><small>时长</small><strong>{{ runTime(snapshot.elapsed) }}</strong></div>
@@ -83,7 +110,7 @@ onBeforeUnmount(() => {
           <p class="overlay-kicker">{{ snapshot.phase === 'over' ? 'GAME OVER' : snapshot.phase === 'paused' ? 'ON HOLD' : 'READY, RUNNER?' }}</p>
           <h2>{{ snapshot.phase === 'over' ? '再来一局？' : snapshot.phase === 'paused' ? '暂停中' : '向前跑。' }}</h2>
           <p v-if="snapshot.phase === 'over'">坚持 {{ runTime(snapshot.elapsed) }} · 得分 {{ snapshot.score.toLocaleString() }} · 最高 {{ snapshot.best.toLocaleString() }}</p>
-          <p v-else-if="snapshot.phase === 'ready'">三次机会。跳过矮栏杆，闪开高栏杆；越跑越快，难度会逐渐稳定。</p>
+          <p v-else-if="snapshot.phase === 'ready'">三次机会。左右滑动换道，上滑跳跃。跳过矮栏杆，闪开高栏杆。</p>
           <p v-else>准备好就继续。</p>
           <button class="start-button" type="button" @click="snapshot.phase === 'paused' ? game?.togglePause() : game?.start()">
             {{ snapshot.phase === 'over' ? '重新开始' : snapshot.phase === 'paused' ? '继续游戏' : '开始游戏' }} <span aria-hidden="true">↗</span>
@@ -94,11 +121,7 @@ onBeforeUnmount(() => {
 
     <div class="runner-footer">
       <p class="controls-hint"><span>键盘</span> ← → / A D 移动 · 空格 / ↑ 跳跃 · P 暂停</p>
-      <div class="touch-controls" aria-label="游戏操作">
-        <button type="button" aria-label="向左移动" @click="game?.move(-1)">←</button>
-        <button type="button" aria-label="跳跃" @click="game?.jump()">跳跃</button>
-        <button type="button" aria-label="向右移动" @click="game?.move(1)">→</button>
-      </div>
+      <p class="swipe-hint">左右滑动换道 · 上滑跳跃</p>
       <span class="game-speed">速度 {{ snapshot.speed }}</span>
     </div>
   </section>
@@ -118,6 +141,12 @@ onBeforeUnmount(() => {
 .pause-button:hover { border-color: var(--acid); }
 .runner-stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; touch-action: none; }
 .runner-canvas { display: block; width: 100%; height: 100%; }
+.damage-fx { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; pointer-events: none; background: radial-gradient(circle at 50% 60%, transparent 24%, #f34e3680 100%); box-shadow: inset 0 0 9rem #f34e3677; animation: damage-flash .65s ease-out forwards; }
+.damage-fx span { padding: .5rem .85rem; border: 1px solid #ffd0b4; background: #a72f29e8; color: #fff5eb; font-size: .83rem; font-weight: 800; letter-spacing: .12em; animation: damage-label .65s ease-out forwards; }
+.runner-stage.is-hit .runner-canvas { animation: damage-shake .4s ease-out; }
+@keyframes damage-flash { 0% { opacity: 0; } 16% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes damage-label { 0% { opacity: 0; transform: translateY(.8rem) scale(.9); } 22% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-1.4rem); } }
+@keyframes damage-shake { 0%, 100% { transform: translateX(0); } 16%, 48% { transform: translateX(-.35rem); } 32%, 64% { transform: translateX(.35rem); } }
 .runner-hud { position: absolute; top: 1rem; left: 1.2rem; right: 1.2rem; display: flex; gap: clamp(1.2rem, 4vw, 3.5rem); pointer-events: none; }
 .runner-hud div { display: grid; gap: .25rem; min-width: 55px; }
 .runner-hud small { color: #c4d3d0; font-size: .63rem; font-weight: 700; letter-spacing: .11em; }
@@ -133,11 +162,8 @@ onBeforeUnmount(() => {
 .controls-hint { margin: 0; color: #becfca; font-size: .74rem; }
 .controls-hint span { margin-right: .8rem; color: var(--acid); font-weight: 700; }
 .game-speed { flex-shrink: 0; color: #8fa6a1; font-size: .67rem; letter-spacing: .12em; }
-.touch-controls { display: flex; gap: .6rem; }
-.touch-controls button { min-width: 54px; min-height: 46px; padding: .5rem; border: 1px solid #738884; background: #26373b; color: #fff; font-weight: 700; }
-.touch-controls button:hover { border-color: var(--acid); }
-@media (min-width: 851px) { .touch-controls { display: none; } }
-@media (max-width: 850px) { .runner-footer { flex-wrap: wrap; }.controls-hint { width: 100%; }.game-speed { margin-left: auto; } }
+.swipe-hint { display: none; margin: 0; color: #becfca; font-size: .74rem; }
+@media (max-width: 850px) { .controls-hint { display: none; }.swipe-hint { display: block; } }
 @media (max-width: 600px) { .runner-overlay { align-items: flex-start; padding-top: 5.2rem; background: linear-gradient(#0c151b55, transparent 65%); }.overlay-content { width: min(300px, 100%); } }
 @media (max-width: 500px) { .runner-head { gap: .5rem; padding-inline: max(1rem, env(safe-area-inset-left)) max(1rem, env(safe-area-inset-right)); }.back-copy, .runner-title small { display: none; }.runner-title { font-size: .78rem; }.runner-hud { gap: 1rem; }.runner-overlay { padding: 5.2rem .7rem .7rem; }.overlay-content { padding: .9rem 1rem; }.controls-hint { display: none; }.game-speed { font-size: .6rem; } }
 </style>

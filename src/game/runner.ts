@@ -19,7 +19,9 @@ const LANES = [-2.45, 0, 2.45]
 const PLAYER_Z = 2
 const SPAWN_Z = -82
 const BEST_KEY = 'fan-runner-best'
-const MAX_DIFFICULTY_AT = 150
+const MAX_DIFFICULTY_AT = 90
+const START_SPEED = 19
+const MAX_SPEED = 34
 
 function bestScore() {
   try { return Number(localStorage.getItem(BEST_KEY)) || 0 } catch { return 0 }
@@ -49,11 +51,11 @@ export class RunnerGame {
   private score = 0
   private coins = 0
   private best = bestScore()
-  private speed = 14
+  private speed = START_SPEED
   private elapsed = 0
   private lives = 3
   private hitCooldown = 0
-  private nextSpawn = 20
+  private nextSpawn = 14
   private items: Item[] = []
 
   constructor(canvas: HTMLCanvasElement, onChange: (snapshot: GameSnapshot) => void) {
@@ -161,11 +163,11 @@ export class RunnerGame {
     this.distance = 0
     this.score = 0
     this.coins = 0
-    this.speed = 14
+    this.speed = START_SPEED
     this.elapsed = 0
     this.lives = 3
     this.hitCooldown = 0
-    this.nextSpawn = 20
+    this.nextSpawn = 14
     this.frog.root.visible = true
     this.lastTime = 0
     this.report()
@@ -247,7 +249,7 @@ export class RunnerGame {
     this.elapsed += dt
     this.hitCooldown = Math.max(0, this.hitCooldown - dt)
     const difficulty = Math.min(1, this.elapsed / MAX_DIFFICULTY_AT)
-    this.speed = 14 + 10 * difficulty
+    this.speed = START_SPEED + (MAX_SPEED - START_SPEED) * difficulty
     const step = this.speed * dt
     this.distance += step
     this.score = Math.floor(this.distance * 3) + this.coins * 25
@@ -273,14 +275,14 @@ export class RunnerGame {
     if (this.nextSpawn <= 0) {
       const safeLane = Math.floor(Math.random() * 3)
       const blockedLanes = [0, 1, 2].filter(lane => lane !== safeLane)
-      const barrierCount = Math.random() < difficulty * .38 ? 2 : 1
+      const barrierCount = Math.random() < difficulty * .45 ? 2 : 1
       for (let i = 0; i < barrierCount; i++) {
         const lane = blockedLanes.splice(Math.floor(Math.random() * blockedLanes.length), 1)[0]!
-        const type = Math.random() < .78 - difficulty * .22 ? 'lowRail' : 'highRail'
+        const type = Math.random() < .72 - difficulty * .18 ? 'lowRail' : 'highRail'
         this.items.push(this.makeItem(lane, SPAWN_Z, type))
       }
       if (Math.random() < .7) this.items.push(this.makeItem(safeLane, SPAWN_Z - 5, 'coin'))
-      const interval = 2.2 - difficulty * .9 + Math.random() * .35
+      const interval = 1.75 - difficulty * .8 + Math.random() * .25
       this.nextSpawn += this.speed * interval
     }
 
