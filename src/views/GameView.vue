@@ -22,7 +22,7 @@ import Navbar from '@/components/Navbar.vue'
         <div class="entry-copy">
           <span class="eyebrow">01 / 3D 跑酷</span>
           <h2>奶蛙跑酷</h2>
-          <p>三次机会，在越来越快的栏杆跑道上挑战更长时间。</p>
+          <p>穿过越来越快的栏杆跑道，拾取飞行器冲上天空收集金币。</p>
           <span class="entry-action">进入游戏 <span aria-hidden="true">↗</span></span>
         </div>
       </RouterLink>

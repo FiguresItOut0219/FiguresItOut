@@ -3,7 +3,7 @@ import { onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef } from 'vue
 import { RunnerGame, type GameSnapshot } from '@/game/runner'
 
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
-const snapshot = shallowRef<GameSnapshot>({ phase: 'ready', score: 0, coins: 0, best: 0, speed: 19, elapsed: 0, lives: 3 })
+const snapshot = shallowRef<GameSnapshot>({ phase: 'ready', score: 0, coins: 0, best: 0, speed: 27, elapsed: 0, lives: 3, flightRemaining: 0 })
 const hitActive = ref(false)
 const hitSequence = ref(0)
 let game: RunnerGame | undefined
@@ -104,13 +104,17 @@ onBeforeUnmount(() => {
         <div><small>机会</small><strong>{{ snapshot.lives }}</strong></div>
         <div><small>金币</small><strong>{{ snapshot.coins }}</strong></div>
       </div>
+      <div v-if="snapshot.flightRemaining > 0" class="flight-status" role="status">
+        <strong>飞行器启动</strong><span>{{ snapshot.flightRemaining.toFixed(1) }} 秒</span>
+        <i :style="{ width: `${snapshot.flightRemaining / 5 * 100}%` }"></i>
+      </div>
 
       <div v-if="snapshot.phase !== 'running'" class="runner-overlay">
         <div class="overlay-content">
           <p class="overlay-kicker">{{ snapshot.phase === 'over' ? 'GAME OVER' : snapshot.phase === 'paused' ? 'ON HOLD' : 'READY, RUNNER?' }}</p>
           <h2>{{ snapshot.phase === 'over' ? '再来一局？' : snapshot.phase === 'paused' ? '暂停中' : '向前跑。' }}</h2>
           <p v-if="snapshot.phase === 'over'">坚持 {{ runTime(snapshot.elapsed) }} · 得分 {{ snapshot.score.toLocaleString() }} · 最高 {{ snapshot.best.toLocaleString() }}</p>
-          <p v-else-if="snapshot.phase === 'ready'">三次机会。左右滑动换道，上滑跳跃。跳过矮栏杆，闪开高栏杆。</p>
+          <p v-else-if="snapshot.phase === 'ready'">左右滑动换道，上滑跳跃。30 秒后寻找飞行器，起飞 5 秒可穿过栏杆、收集空中金币。</p>
           <p v-else>准备好就继续。</p>
           <button class="start-button" type="button" @click="snapshot.phase === 'paused' ? game?.togglePause() : game?.start()">
             {{ snapshot.phase === 'over' ? '重新开始' : snapshot.phase === 'paused' ? '继续游戏' : '开始游戏' }} <span aria-hidden="true">↗</span>
@@ -151,6 +155,9 @@ onBeforeUnmount(() => {
 .runner-hud div { display: grid; gap: .25rem; min-width: 55px; }
 .runner-hud small { color: #c4d3d0; font-size: .63rem; font-weight: 700; letter-spacing: .11em; }
 .runner-hud strong { font-size: clamp(1.05rem, 3vw, 1.55rem); font-variant-numeric: tabular-nums; }
+.flight-status { position: absolute; top: 5.2rem; left: 1.2rem; z-index: 1; display: grid; grid-template-columns: auto auto; gap: .35rem .8rem; align-items: center; min-width: 185px; padding: .65rem .75rem; border: 1px solid #88edf0; background: #133d49df; color: #e7ffff; font-size: .75rem; pointer-events: none; }
+.flight-status span { justify-self: end; font-variant-numeric: tabular-nums; }
+.flight-status i { grid-column: 1 / -1; display: block; height: .22rem; background: #75eff1; transition: width .15s linear; }
 .runner-overlay { position: absolute; inset: 0; display: flex; align-items: end; padding: 1.5rem; background: linear-gradient(transparent 55%, #0c151b66); pointer-events: none; }
 .overlay-content { width: min(340px, 100%); padding: 1.2rem 1.3rem; border: 1px solid #526966; background: #102027ef; pointer-events: auto; }
 .overlay-kicker { margin: 0; color: var(--acid); font-size: .68rem; font-weight: 700; letter-spacing: .2em; }
