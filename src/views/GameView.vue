@@ -13,7 +13,7 @@ import Navbar from '@/components/Navbar.vue'
       <p>一点休息时间，来玩一局。</p>
     </div>
     <section class="game-list" aria-label="游戏列表">
-      <RouterLink class="game-entry" to="/game/runner">
+      <a class="game-entry" href="/game/runner">
         <div class="entry-art" aria-hidden="true">
           <span class="lane lane-left"></span>
           <span class="lane lane-right"></span>
@@ -25,7 +25,7 @@ import Navbar from '@/components/Navbar.vue'
           <p>穿过越来越快的栏杆跑道，拾取飞行器冲上天空收集金币。</p>
           <span class="entry-action">进入游戏 <span aria-hidden="true">↗</span></span>
         </div>
-      </RouterLink>
+      </a>
     </section>
   </main>
 </template>

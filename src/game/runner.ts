@@ -66,9 +66,10 @@ export class RunnerGame {
 
   constructor(canvas: HTMLCanvasElement, onChange: (snapshot: GameSnapshot) => void) {
     this.onChange = onChange
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' })
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
-    this.renderer.shadowMap.enabled = true
+    const mobile = window.innerWidth < 600
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !mobile, powerPreference: 'default' })
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.25 : 2))
+    this.renderer.shadowMap.enabled = !mobile
     this.renderer.shadowMap.type = THREE.PCFShadowMap
     this.renderer.outputColorSpace = THREE.SRGBColorSpace
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -81,7 +82,7 @@ export class RunnerGame {
     const sun = new THREE.DirectionalLight(0xffe4ae, 3)
     sun.position.set(-7, 14, 7)
     sun.castShadow = true
-    sun.shadow.mapSize.set(1024, 1024)
+    sun.shadow.mapSize.set(mobile ? 512 : 1024, mobile ? 512 : 1024)
     sun.shadow.camera.left = -14
     sun.shadow.camera.right = 14
     sun.shadow.camera.top = 15

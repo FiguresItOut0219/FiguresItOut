@@ -6,6 +6,7 @@ const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const snapshot = shallowRef<GameSnapshot>({ phase: 'ready', score: 0, coins: 0, best: 0, speed: 27, elapsed: 0, lives: 3, flightRemaining: 0 })
 const hitActive = ref(false)
 const hitSequence = ref(0)
+const loadError = ref(false)
 let game: RunnerGame | undefined
 let observer: ResizeObserver | undefined
 let hitTimer: ReturnType<typeof setTimeout> | undefined
@@ -58,18 +59,24 @@ function onVisibility() {
 
 onMounted(() => {
   if (!canvas.value) return
-  game = new RunnerGame(canvas.value, value => {
-    if (value.lives < snapshot.value.lives) {
-      hitSequence.value++
-      hitActive.value = true
-      clearTimeout(hitTimer)
-      hitTimer = setTimeout(() => { hitActive.value = false }, 650)
-    } else if (value.lives > snapshot.value.lives) {
-      hitActive.value = false
-      clearTimeout(hitTimer)
-    }
-    snapshot.value = value
-  })
+  try {
+    game = new RunnerGame(canvas.value, value => {
+      if (value.lives < snapshot.value.lives) {
+        hitSequence.value++
+        hitActive.value = true
+        clearTimeout(hitTimer)
+        hitTimer = setTimeout(() => { hitActive.value = false }, 650)
+      } else if (value.lives > snapshot.value.lives) {
+        hitActive.value = false
+        clearTimeout(hitTimer)
+      }
+      snapshot.value = value
+    })
+  } catch (error) {
+    console.error('Failed to start the runner game', error)
+    loadError.value = true
+    return
+  }
   observer = new ResizeObserver(() => game?.resize())
   observer.observe(canvas.value)
   window.addEventListener('keydown', onKey)
@@ -108,8 +115,16 @@ onBeforeUnmount(() => {
         <strong>飞行器启动</strong><span>{{ snapshot.flightRemaining.toFixed(1) }} 秒</span>
         <i :style="{ width: `${snapshot.flightRemaining / 5 * 100}%` }"></i>
       </div>
+      <div v-if="loadError" class="runner-overlay">
+        <div class="overlay-content" role="alert">
+          <p class="overlay-kicker">无法启动游戏</p>
+          <h2>游戏未能加载。</h2>
+          <p>请刷新页面重试；若仍无法进入，可尝试更新手机浏览器。</p>
+          <RouterLink class="start-button" to="/game">返回游戏列表 <span aria-hidden="true">↗</span></RouterLink>
+        </div>
+      </div>
 
-      <div v-if="snapshot.phase !== 'running'" class="runner-overlay">
+      <div v-if="!loadError && snapshot.phase !== 'running'" class="runner-overlay">
         <div class="overlay-content">
           <p class="overlay-kicker">{{ snapshot.phase === 'over' ? 'GAME OVER' : snapshot.phase === 'paused' ? 'ON HOLD' : 'READY, RUNNER?' }}</p>
           <h2>{{ snapshot.phase === 'over' ? '再来一局？' : snapshot.phase === 'paused' ? '暂停中' : '向前跑。' }}</h2>
