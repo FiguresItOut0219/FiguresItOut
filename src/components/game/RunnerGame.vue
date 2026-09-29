@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef } from 'vue'
-import { RunnerGame, type GameSnapshot } from '@/game/runner'
+import { FLIGHT_DURATION, RunnerGame, type GameSnapshot } from '@/game/runner'
 
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const snapshot = shallowRef<GameSnapshot>({ phase: 'ready', score: 0, coins: 0, best: 0, speed: 27, elapsed: 0, lives: 3, flightRemaining: 0 })
@@ -113,7 +113,7 @@ onBeforeUnmount(() => {
       </div>
       <div v-if="snapshot.flightRemaining > 0" class="flight-status" role="status">
         <strong>飞行器启动</strong><span>{{ snapshot.flightRemaining.toFixed(1) }} 秒</span>
-        <i :style="{ width: `${snapshot.flightRemaining / 5 * 100}%` }"></i>
+        <i :style="{ width: `${snapshot.flightRemaining / FLIGHT_DURATION * 100}%` }"></i>
       </div>
       <div v-if="loadError" class="runner-overlay">
         <div class="overlay-content" role="alert">
@@ -129,7 +129,7 @@ onBeforeUnmount(() => {
           <p class="overlay-kicker">{{ snapshot.phase === 'over' ? 'GAME OVER' : snapshot.phase === 'paused' ? 'ON HOLD' : 'READY, RUNNER?' }}</p>
           <h2>{{ snapshot.phase === 'over' ? '再来一局？' : snapshot.phase === 'paused' ? '暂停中' : '向前跑。' }}</h2>
           <p v-if="snapshot.phase === 'over'">坚持 {{ runTime(snapshot.elapsed) }} · 得分 {{ snapshot.score.toLocaleString() }} · 最高 {{ snapshot.best.toLocaleString() }}</p>
-          <p v-else-if="snapshot.phase === 'ready'">左右滑动换道，上滑跳跃。30 秒后寻找飞行器，起飞 5 秒可穿过栏杆、收集空中金币。</p>
+          <p v-else-if="snapshot.phase === 'ready'">左右滑动换道，上滑跳跃。30 秒后寻找飞行器，起飞 10 秒可穿过栏杆、收集空中金币。</p>
           <p v-else>准备好就继续。</p>
           <button class="start-button" type="button" @click="snapshot.phase === 'paused' ? game?.togglePause() : game?.start()">
             {{ snapshot.phase === 'over' ? '重新开始' : snapshot.phase === 'paused' ? '继续游戏' : '开始游戏' }} <span aria-hidden="true">↗</span>

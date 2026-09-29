@@ -2,7 +2,7 @@ import * as THREE from 'three'
 
 export interface MilkFrog {
   root: THREE.Group
-  animate: (distance: number, jumpHeight: number, dodge: number, running: boolean) => void
+  animate: (distance: number, jumpHeight: number, dodge: number, running: boolean, flight: number) => void
 }
 
 /** An articulated 3D model based on the supplied milk-frog reference. */
@@ -127,20 +127,21 @@ export function createMilkFrog(): MilkFrog {
   const forwardAngle = Math.PI - .28
   root.rotation.y = forwardAngle
 
-  function animate(distance: number, jumpHeight: number, dodge: number, running: boolean) {
-    const cadence = running && jumpHeight < .08 ? Math.sin(distance * 2.4) : 0
+  function animate(distance: number, jumpHeight: number, dodge: number, running: boolean, flight: number) {
+    const cadence = running && jumpHeight < .08 && flight < .05 ? Math.sin(distance * 2.4) : 0
     root.position.y = jumpHeight
+    root.rotation.x += (-flight * .88 - root.rotation.x) * .14
     root.rotation.z += ((-dodge * .17) - root.rotation.z) * .22
     root.rotation.y += ((forwardAngle + dodge * .09) - root.rotation.y) * .18
-    bodyRig.position.y = running && jumpHeight < .08 ? Math.abs(cadence) * .045 : 0
-    bodyRig.rotation.x = jumpHeight > .1 ? -.1 : .02
-    arms[0].rotation.x = jumpHeight > .1 ? -1.2 : cadence * .6
-    arms[1].rotation.x = jumpHeight > .1 ? -1.2 : -cadence * .6
-    arms[0].rotation.z = jumpHeight > .1 ? -.34 : 0
-    arms[1].rotation.z = jumpHeight > .1 ? .34 : 0
-    legs[0].rotation.x = jumpHeight > .1 ? -.36 : -cadence * .45
-    legs[1].rotation.x = jumpHeight > .1 ? -.36 : cadence * .45
-    bodyRig.scale.set(1 + Math.min(jumpHeight, 1) * .04, 1 - Math.min(jumpHeight, 1) * .04, 1)
+    bodyRig.position.y = flight > .05 ? Math.sin(distance * .32) * .05 * flight : running && jumpHeight < .08 ? Math.abs(cadence) * .045 : 0
+    bodyRig.rotation.x = flight > .05 ? .1 * flight : jumpHeight > .1 ? -.1 : .02
+    arms[0].rotation.x = flight > .05 ? -1.55 * flight : jumpHeight > .1 ? -1.2 : cadence * .6
+    arms[1].rotation.x = flight > .05 ? -1.55 * flight : jumpHeight > .1 ? -1.2 : -cadence * .6
+    arms[0].rotation.z = flight > .05 ? -.42 : jumpHeight > .1 ? -.34 : 0
+    arms[1].rotation.z = flight > .05 ? .42 : jumpHeight > .1 ? .34 : 0
+    legs[0].rotation.x = flight > .05 ? .42 : jumpHeight > .1 ? -.36 : -cadence * .45
+    legs[1].rotation.x = flight > .05 ? .42 : jumpHeight > .1 ? -.36 : cadence * .45
+    bodyRig.scale.set(1 + Math.min(jumpHeight, 1) * .04 * (1 - flight), 1 - Math.min(jumpHeight, 1) * .04 * (1 - flight), 1)
   }
 
   return { root, animate }

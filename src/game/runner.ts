@@ -23,7 +23,7 @@ const BEST_KEY = 'fan-runner-best'
 const MAX_DIFFICULTY_AT = 75
 const START_SPEED = 27
 const MAX_SPEED = 46
-const FLIGHT_DURATION = 5
+export const FLIGHT_DURATION = 10
 
 function bestScore() {
   try { return Number(localStorage.getItem(BEST_KEY)) || 0 } catch { return 0 }
@@ -39,6 +39,7 @@ export class RunnerGame {
   private camera = new THREE.PerspectiveCamera(55, 1, .1, 180)
   private frog: MilkFrog
   private jetpackRig = new THREE.Group()
+  private jetpackFlames: THREE.Mesh[] = []
   private laneMarks: THREE.Mesh[] = []
   private posts: THREE.Group[] = []
   private onChange: (snapshot: GameSnapshot) => void
@@ -149,20 +150,39 @@ export class RunnerGame {
 
   private buildJetpack() {
     const rig = this.jetpackRig
-    rig.position.set(0, 1.55, -.68)
-    this.box(rig, .55, .7, .2, 0x5de3ec, 0, 0, 0, true)
-    for (const side of [-1, 1]) {
-      this.box(rig, .24, .55, .27, 0xd8f7e9, side * .37, -.04, -.02, true)
-      const flame = new THREE.Mesh(
-        new THREE.ConeGeometry(.13, .55, 10),
-        new THREE.MeshBasicMaterial({ color: 0xffc559 }),
-      )
-      flame.rotation.z = Math.PI
-      flame.position.set(side * .37, -.6, -.02)
-      rig.add(flame)
-    }
+    rig.position.set(0, 1.48, -.75)
+    this.addJetpackModel(rig, true)
+    rig.scale.setScalar(.88)
     rig.visible = false
     this.frog.root.add(rig)
+  }
+
+  private addJetpackModel(parent: THREE.Group, withFlames: boolean) {
+    const shell = new THREE.MeshStandardMaterial({ color: 0xe4e8db, metalness: .68, roughness: .26 })
+    const dark = new THREE.MeshStandardMaterial({ color: 0x203e49, metalness: .56, roughness: .35 })
+    const glow = new THREE.MeshStandardMaterial({ color: 0x73eff0, emissive: 0x16a9c9, emissiveIntensity: 1.1, metalness: .3, roughness: .2 })
+    const gold = new THREE.MeshStandardMaterial({ color: 0xf1bc57, metalness: .55, roughness: .32 })
+    const add = (geometry: THREE.BufferGeometry, material: THREE.Material, x: number, y: number, z: number) => {
+      const mesh = new THREE.Mesh(geometry, material)
+      mesh.position.set(x, y, z)
+      mesh.castShadow = true
+      parent.add(mesh)
+      return mesh
+    }
+    add(new THREE.CapsuleGeometry(.29, .28, 6, 14), shell, 0, .08, 0)
+    add(new THREE.BoxGeometry(.4, .42, .12), dark, 0, .12, -.3)
+    add(new THREE.BoxGeometry(.22, .34, .04), glow, 0, .12, -.38)
+    for (const side of [-1, 1]) {
+      add(new THREE.CylinderGeometry(.17, .2, .75, 16), shell, side * .41, .03, -.08)
+      add(new THREE.CylinderGeometry(.2, .2, .12, 16), gold, side * .41, -.34, -.08)
+      add(new THREE.CylinderGeometry(.14, .14, .08, 16), dark, side * .41, -.43, -.08)
+      add(new THREE.BoxGeometry(.12, .13, .4), dark, side * .31, .28, .12)
+      if (withFlames) {
+        const flame = add(new THREE.ConeGeometry(.13, .63, 12), new THREE.MeshBasicMaterial({ color: 0x69edff }), side * .41, -.79, -.08)
+        flame.rotation.z = Math.PI
+        this.jetpackFlames.push(flame)
+      }
+    }
   }
 
   resize() {
@@ -245,12 +265,18 @@ export class RunnerGame {
       for (const x of [-.83, .83]) this.box(group, .2, 2.65, .24, 0xb94e45, x, 1.33, 0, true)
       for (const y of [.72, 1.5, 2.35]) this.box(group, 1.9, .2, .28, 0xffa577, 0, y, 0, true)
     } else if (type === 'jetpack') {
-      const glow = new THREE.MeshStandardMaterial({ color: 0x64eafa, emissive: 0x2389b1, emissiveIntensity: .9, metalness: .45, roughness: .3 })
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(.65, .09, 10, 24), glow)
-      ring.position.y = 1.35
-      group.add(ring)
-      this.box(group, .58, .7, .34, 0x8af6ee, 0, 1.35, 0, true)
-      for (const x of [-.4, .4]) this.box(group, .2, .56, .3, 0xffd176, x, 1.3, 0, true)
+      const model = new THREE.Group()
+      model.position.y = 1.55
+      model.scale.setScalar(1.15)
+      this.addJetpackModel(model, false)
+      group.add(model)
+      const halo = new THREE.Mesh(
+        new THREE.TorusGeometry(.75, .055, 8, 32),
+        new THREE.MeshBasicMaterial({ color: 0x75eff1 }),
+      )
+      halo.rotation.x = Math.PI / 2
+      halo.position.y = .12
+      group.add(halo)
     } else {
       const material = new THREE.MeshStandardMaterial({ color: 0xffd568, metalness: .58, roughness: .26, emissive: 0x684400, emissiveIntensity: .35 })
       const coin = new THREE.Mesh(new THREE.TorusGeometry(.43, .12, 8, 18), material)
@@ -277,7 +303,7 @@ export class RunnerGame {
     this.lastTime = time
     if (this.phase === 'running') this.update(dt)
     this.frog.root.visible = this.phase !== 'running' || this.hitCooldown <= 0 || Math.floor(time / 90) % 2 === 0
-    this.frog.animate(this.distance, this.jumpHeight + this.flightHeight, LANES[this.lane] - this.lanePosition, this.phase === 'running')
+    this.frog.animate(this.distance, this.jumpHeight + this.flightHeight, LANES[this.lane] - this.lanePosition, this.phase === 'running', Math.min(1, this.flightHeight / 3.25))
     const baseCameraY = this.renderer.domElement.clientWidth < 600 ? 4.2 : 4.4
     this.camera.position.y += (baseCameraY + Math.min(1.2, this.flightHeight * .36) - this.camera.position.y) * .1
     this.camera.lookAt(0, 1.25 + this.flightHeight * .34, -14)
@@ -295,6 +321,7 @@ export class RunnerGame {
     }
     this.flightHeight += ((this.flightRemaining > 0 ? 3.25 : 0) - this.flightHeight) * Math.min(1, dt * 4.5)
     this.jetpackRig.visible = this.flightRemaining > 0 || this.flightHeight > .3
+    for (const flame of this.jetpackFlames) flame.scale.y = .85 + Math.sin(this.elapsed * 30) * .16
     const difficulty = Math.min(1, this.elapsed / MAX_DIFFICULTY_AT)
     this.speed = START_SPEED + (MAX_SPEED - START_SPEED) * difficulty
     const step = this.speed * dt
@@ -351,8 +378,8 @@ export class RunnerGame {
         this.jumpHeight = 0
         this.jumpVelocity = 0
         this.hitCooldown = 0
-        for (let i = 0; i < 7; i++) {
-          this.items.push(this.makeItem(this.lane, PLAYER_Z - this.speed * (.7 + i * .55), 'airCoin'))
+        for (let i = 0; i < 13; i++) {
+          this.items.push(this.makeItem(this.lane, PLAYER_Z - this.speed * (.8 + i * .68), 'airCoin'))
         }
         this.report()
         continue
