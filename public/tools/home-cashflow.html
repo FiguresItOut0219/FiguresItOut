@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>买房现金流计算器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1f2126;
+    color: #e8e9ec;
+    font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+    padding: 28px 20px;
+    line-height: 1.6;
+  }
+  .card { max-width: 880px; margin: 0 auto; }
+  h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: #9aa0ab; margin-bottom: 18px; }
+  .panel { background: #262a31; border: 1px solid #33363d; border-radius: 10px; padding: 16px 18px; margin-bottom: 18px; }
+  .panel h2 { font-size: 13px; font-weight: 700; color: #8ab4f0; margin-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 16px; }
+  .field label { display: block; font-size: 11.5px; color: #9aa0ab; margin-bottom: 4px; }
+  .field input, .field select {
+    width: 100%; background: #1f2126; border: 1px solid #3a3d44; border-radius: 6px;
+    color: #e8e9ec; font-size: 14px; font-weight: 600; padding: 7px 10px; outline: none;
+  }
+  .field input:focus, .field select:focus { border-color: #4a7fc1; }
+  .field .unit { font-size: 11px; color: #6b7280; margin-top: 2px; }
+  details summary { cursor: pointer; font-size: 12px; color: #8ab4f0; font-weight: 600; margin-bottom: 10px; user-select: none; }
+  details summary:hover { color: #a9c6f0; }
+  .cards { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 18px; }
+  .stat { flex: 1; min-width: 150px; background: #262a31; border: 1px solid #33363d; border-radius: 10px; padding: 14px 16px; }
+  .stat .k { font-size: 11.5px; color: #9aa0ab; margin-bottom: 4px; }
+  .stat .v { font-size: 24px; font-weight: 700; }
+  .stat .d { font-size: 11px; color: #6b7280; margin-top: 2px; }
+  .v.blue { color: #8ab4f0; } .v.pink { color: #f2b8c6; } .v.green { color: #7ee0a3; }
+  .bar-label { font-size: 12px; color: #c9cdd6; margin-bottom: 8px; }
+  .bar { display: flex; width: 100%; height: 62px; border-radius: 8px; overflow: hidden; gap: 1px; margin-bottom: 6px; }
+  .bar .seg { display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; transition: width .15s; }
+  .scale { display: flex; justify-content: space-between; font-size: 10.5px; color: #9aa0ab; margin-bottom: 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 18px; }
+  th { background: #262a31; color: #9aa0ab; font-size: 11px; font-weight: 500; padding: 8px 10px; text-align: right; }
+  th:first-child { text-align: left; }
+  td { padding: 7px 10px; text-align: right; border-bottom: 1px solid #2b2e34; }
+  td:first-child { text-align: left; }
+  .chip { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 8px; vertical-align: -1px; }
+  .note { color: #9aa0ab; font-size: 11.5px; font-weight: 400; }
+  .hl { color: #f2b8c6; }
+  tr.subtotal td { background: #262a31; font-weight: 600; border-bottom: none; }
+  tr.total td { background: #2b2e34; font-weight: 700; border-bottom: none; }
+  tr.surplus td { background: #1d3a2b; color: #7ee0a3; font-weight: 700; font-size: 14px; padding: 10px; }
+  h3 { font-size: 14px; font-weight: 700; color: #8ab4f0; margin: 20px 0 10px; }
+  .warn { color: #f2b8c6; font-size: 12px; margin-top: 6px; min-height: 18px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <noscript>
+    <div style="background:#3a1d24;border:1px solid #7a3f55;color:#f2b8c6;padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px;">
+      ⚠️ 当前打开方式禁用了网页脚本，无法计算。请点击右上角「···」→「用其他应用打开」→ 选择系统浏览器（Safari / Chrome / 华为浏览器等）重新打开此文件。
+    </div>
+  </noscript>
+  <div id="jsWarn" style="display:none;background:#3a1d24;border:1px solid #7a3f55;color:#f2b8c6;padding:12px 16px;border-radius:8px;font-size:13px;margin-bottom:16px;">
+    ⚠️ 检测到网页脚本未执行，无法计算。请点击右上角「···」→「用其他应用打开」→ 选择系统浏览器（Safari / Chrome / 华为浏览器等）重新打开此文件。
+  </div>
+  <h1>买房现金流计算器</h1>
+  <p class="sub">改下面任意数字，月供、支出明细、彩条、年结余全部实时重算</p>
+
+  <div class="panel">
+    <h2>房子与贷款</h2>
+    <div class="grid">
+      <div class="field"><label>房价（万元）</label><input id="price" type="number" value="100" min="10" step="1"><div class="unit">总价</div></div>
+      <div class="field"><label>面积（㎡）</label><input id="area" type="number" value="110" min="20" step="1"><div class="unit">物业费 = 面积 × 2.2 元/㎡</div></div>
+      <div class="field"><label>首付（万元）</label><input id="down" type="number" value="40" min="0" step="1"><div class="unit">商贷最低 15%</div></div>
+      <div class="field"><label>贷款年限</label><select id="years"><option value="20" selected>20 年</option><option value="25">25 年</option><option value="30">30 年</option></select><div class="unit">等额本息</div></div>
+      <div class="field"><label>商贷利率（%）</label><input id="rate" type="number" value="3.0" min="2" max="6" step="0.05"><div class="unit">当前佛山主流 3.0%</div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <details id="incomeBox">
+      <summary>我的收支（点击展开修改）</summary>
+      <div class="grid">
+        <div class="field"><label>月收入（元）</label><input id="income" type="number" value="9600" step="100"></div>
+        <div class="field"><label>饮食 / 月（元）</label><input id="e_food" type="number" value="660" step="10"></div>
+        <div class="field"><label>约会 / 月（元）</label><input id="e_date" type="number" value="1000" step="50"></div>
+        <div class="field"><label>房租 / 月（元，买房后保留）</label><input id="e_rent" type="number" value="1050" step="50"></div>
+        <div class="field"><label>加油+电费 / 月（元）</label><input id="e_util" type="number" value="450" step="10"></div>
+        <div class="field"><label>会员 / 月（元）</label><input id="e_mem" type="number" value="170" step="10"></div>
+        <div class="field"><label>话费 / 月（元）</label><input id="e_phone" type="number" value="30" step="10"></div>
+        <div class="field"><label>人情 / 年（元）</label><input id="e_gift" type="number" value="2400" step="100"></div>
+        <div class="field"><label>保险 / 年（元）</label><input id="e_ins" type="number" value="13000" step="500"></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="cards">
+    <div class="stat"><div class="k">贷款金额</div><div class="v blue" id="o_loan">—</div><div class="d" id="o_loan_d">—</div></div>
+    <div class="stat"><div class="k">房贷月供</div><div class="v pink" id="o_pay">—</div><div class="d" id="o_pay_d">—</div></div>
+    <div class="stat"><div class="k">每月结余</div><div class="v green" id="o_msur">—</div><div class="d" id="o_msur_d">—</div></div>
+    <div class="stat"><div class="k">每年结余</div><div class="v green" id="o_ysur">—</div><div class="d" id="o_ysur_d">—</div></div>
+  </div>
+  <div class="warn" id="warn"></div>
+
+  <div class="bar-label">每一段按占比铺满整年收入，颜色与下表一一对应；最右 <b style="color:#7ee0a3;">绿色 = 每年结余</b></div>
+  <div class="bar" id="bar"></div>
+  <div class="scale"><span>0</span><span id="scale_max">年收入</span></div>
+
+  <table id="detail"></table>
+
+  <h3>对照：买房前 vs 买房后</h3>
+  <table id="compare"></table>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var num = function (id) { var v = parseFloat($(id).value); return isNaN(v) ? 0 : v; };
+
+  var COLORS = {
+    loan: '#c65d7b', rent: '#d68a5e', date: '#d9a85c', ins: '#c7b45e',
+    food: '#8fb56a', util: '#6aa8a0', gift: '#7b9cc6', wuye: '#8b8fc7',
+    mem: '#a187c4', phone: '#b98ac0', surplus: '#2f9e6e'
+  };
+
+  function amort(P, annual, years) {
+    var i = annual / 100 / 12, n = years * 12;
+    if (P <= 0) return { m: 0, t: 0 };
+    if (i === 0) return { m: P / n, t: 0 };
+    var m = P * i * Math.pow(1 + i, n) / (Math.pow(1 + i, n) - 1);
+    return { m: m, t: m * n - P };
+  }
+  function fmt(n) { return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function pct(x) { return (x * 100).toFixed(1) + '%'; }
+
+  function calc() {
+    var price = num('price') * 10000;
+    var area = num('area');
+    var down = num('down') * 10000;
+    var years = parseInt($('years').value, 10);
+    var rate = num('rate');
+    var income = num('income');
+    var loan = Math.max(0, price - down);
+    var wuye = area * 2.2;
+
+    var monthlyFixed = num('e_food') + num('e_date') + num('e_rent') + num('e_util') + num('e_mem') + num('e_phone');
+    var annualItems = num('e_gift') + num('e_ins');
+
+    var warn = '';
+    if (down > price) warn = '首付超过房价，请调整';
+    else if (loan > 0 && down / price < 0.15) warn = '首付低于 15%，银行商贷最低首付比例，可能批不下来';
+    $('warn').textContent = warn;
+
+    var r = amort(loan, rate, years);
+    var pay = r.m;
+    var monthOut = monthlyFixed + pay + wuye;
+    var yearOut = monthOut * 12 + annualItems;
+    var yearIncome = income * 12;
+    var surplus = yearIncome - yearOut;
+
+    var monthOut0 = monthlyFixed;
+    var yearOut0 = monthOut0 * 12 + annualItems;
+    var surplus0 = yearIncome - yearOut0;
+
+    $('o_loan').textContent = fmt(loan) + ' 元';
+    $('o_loan_d').textContent = '总价 ' + fmt(price) + ' · 首付 ' + fmt(down) + ' · 总利息 ' + (r.t / 10000).toFixed(1) + ' 万';
+    $('o_pay').textContent = fmt(pay) + ' 元/月';
+    $('o_pay_d').textContent = years + ' 年 · ' + rate + '% · 占收入 ' + (income > 0 ? pct(pay / income) : '-');
+    $('o_msur').textContent = fmt(income - monthOut) + ' 元/月';
+    $('o_msur_d').textContent = '月支出 ' + fmt(monthOut) + ' · 月收入 ' + fmt(income);
+    $('o_ysur').textContent = fmt(surplus) + ' 元/年';
+    $('o_ysur_d').textContent = '年支出 ' + fmt(yearOut) + ' · 占收入 ' + (yearIncome > 0 ? pct(yearOut / yearIncome) : '-');
+    $('scale_max').textContent = '年收入 ' + fmt(yearIncome) + ' 元';
+
+    var items = [
+      { k: '房贷月供', c: COLORS.loan, m: pay, y: pay * 12, hl: 1, note: '（贷 ' + fmt(loan) + ' · ' + rate + '% · ' + years + ' 年）' },
+      { k: '房租', c: COLORS.rent, m: num('e_rent'), y: num('e_rent') * 12, note: '（工作地 · 买房后保留）' },
+      { k: '约会', c: COLORS.date, m: num('e_date'), y: num('e_date') * 12 },
+      { k: '保险', c: COLORS.ins, m: 0, y: num('e_ins'), hl: 1, note: '（人 + 车 · 年缴）' },
+      { k: '饮食', c: COLORS.food, m: num('e_food'), y: num('e_food') * 12, note: '（30 元 × 22 个工作日）' },
+      { k: '加油 + 电费', c: COLORS.util, m: num('e_util'), y: num('e_util') * 12 },
+      { k: '人情', c: COLORS.gift, m: 0, y: num('e_gift'), note: '（生日 / 过年 / 父母节）' },
+      { k: '物业费', c: COLORS.wuye, m: wuye, y: wuye * 12, note: '（' + area + '㎡ × 2.2 元/㎡）' },
+      { k: '会员', c: COLORS.mem, m: num('e_mem'), y: num('e_mem') * 12, note: '（AI + 腾讯）' },
+      { k: '话费', c: COLORS.phone, m: num('e_phone'), y: num('e_phone') * 12 }
+    ];
+
+    var totalY = pay * 12 + num('e_rent') * 12 + num('e_date') * 12 + num('e_ins') + num('e_food') * 12 + num('e_util') * 12 + num('e_gift') + wuye * 12 + num('e_mem') * 12 + num('e_phone') * 12;
+    var base = yearIncome > 0 ? yearIncome : 1;
+
+    var barHtml = '';
+    items.forEach(function (it) {
+      var w = it.y / base * 100;
+      if (w <= 0) return;
+      var label = w >= 7 ? it.k + ' ' + fmt(it.y) : '';
+      barHtml += '<div class="seg" style="width:' + w + '%;background:' + it.c + ';">' + label + '</div>';
+    });
+    var wSur = surplus / base * 100;
+    if (wSur > 0) {
+      barHtml += '<div class="seg" style="width:' + wSur + '%;background:' + COLORS.surplus + ';">' + (wSur >= 7 ? '剩 ' + fmt(surplus) : '') + '</div>';
+    } else {
+      barHtml += '<div class="seg" style="width:' + Math.max(0.5, wSur) + '%;background:#8a2f3f;" title="赤字"></div>';
+    }
+    $('bar').innerHTML = barHtml;
+
+    var html = '<tr><th>项目</th><th>月(元)</th><th>年(元)</th><th>占收入</th></tr>';
+    items.forEach(function (it) {
+      html += '<tr><td><span class="chip" style="background:' + it.c + ';"></span>' + it.k + ' <span class="note">' + (it.note || '') + '</span></td>' +
+        '<td' + (it.hl ? ' class="hl"' : '') + '>' + (it.m > 0 ? fmt(it.m) : '—') + '</td>' +
+        '<td' + (it.hl ? ' class="hl"' : '') + '>' + fmt(it.y) + '</td>' +
+        '<td class="note">' + pct(it.y / base) + '</td></tr>';
+    });
+    var fixedY = monthlyFixed * 12, addY = (pay + wuye) * 12;
+    html += '<tr class="subtotal"><td>固定支出小计</td><td>' + fmt(monthlyFixed) + '</td><td>' + fmt(fixedY) + '</td><td class="note">' + pct(fixedY / base) + '</td></tr>';
+    html += '<tr class="subtotal"><td>买房新增小计 <span class="note">（房贷 + 物业）</span></td><td class="hl">' + fmt(pay + wuye) + '</td><td class="hl">' + fmt(addY) + '</td><td class="hl">' + pct(addY / base) + '</td></tr>';
+    html += '<tr class="subtotal"><td>年度项小计 <span class="note">（人情 + 保险）</span></td><td>—</td><td>' + fmt(annualItems) + '</td><td class="note">' + pct(annualItems / base) + '</td></tr>';
+    html += '<tr class="total"><td>年支出合计</td><td>—</td><td>' + fmt(yearOut) + '</td><td>' + pct(yearOut / base) + '</td></tr>';
+    html += '<tr class="surplus"><td>每年结余（' + years + ' 年）</td><td>月均 ' + fmt(surplus / 12) + '</td><td>' + fmt(surplus) + '</td><td>' + pct(surplus / base) + '</td></tr>';
+    $('detail').innerHTML = html;
+
+    var c = '<tr><th>情景</th><th>月支出</th><th>年支出</th><th>年结余</th><th>月均结余</th></tr>';
+    c += '<tr><td>未买房（租房）</td><td>' + fmt(monthOut0) + '</td><td>' + fmt(yearOut0) + '</td><td style="font-weight:700;">' + fmt(surplus0) + '</td><td>' + fmt(surplus0 / 12) + '</td></tr>';
+    c += '<tr><td>买房 · ' + years + ' 年（贷 ' + fmt(loan) + ' · ' + rate + '%）</td><td>' + fmt(monthOut) + '</td><td>' + fmt(yearOut) + '</td><td class="hl">' + fmt(surplus) + '</td><td>' + fmt(surplus / 12) + '</td></tr>';
+    $('compare').innerHTML = c;
+  }
+
+  var ids = ['price', 'area', 'down', 'years', 'rate', 'income', 'e_food', 'e_date', 'e_rent', 'e_util', 'e_mem', 'e_phone', 'e_gift', 'e_ins'];
+  ids.forEach(function (id) { $(id).addEventListener('input', calc); });
+  calc();
+  setTimeout(function () {
+    if ($('o_loan').textContent === '—') { $('jsWarn').style.display = 'block'; }
+  }, 600);
+})();
+</script>
+</body>
+</html>

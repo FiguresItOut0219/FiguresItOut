@@ -4,6 +4,7 @@ import LumaView from '@/views/LumaView.vue'
 import NorthstarView from '@/views/NorthstarView.vue'
 import SummitView from '@/views/SummitView.vue'
 const router=createRouter({history:createWebHistory(),scrollBehavior(to){return to.hash?{el:to.hash,behavior:'smooth'}:{top:0}},routes:[
+  {path:'/tools/home-cashflow',name:'home-cashflow',component:()=>import('@/views/HomeCashflowView.vue'),meta:{seo:{title:'买房现金流计算器 — FAN',description:'计算购房贷款、月度支出与家庭现金流。'},hideActionDock:true}},
   {path:'/game',name:'game',component:()=>import('@/views/GameView.vue'),meta:{seo:{title:'Game — FAN',description:'A dedicated space for browser games and playful experiments by FAN.'}}},
   {path:'/game/runner',name:'game-runner',component:()=>import('@/views/RunnerView.vue'),meta:{seo:{title:'奶蛙跑酷 — FAN Game',description:'在三条跑道间闪避障碍、跳跃和收集金币的 3D 奶蛙跑酷游戏。'}}},
   {path:'/',component:HomeView,meta:{seo:{title:'FAN — Frontend Development Partner',description:'Frontend development partner for creative and marketing agencies. Figma to polished, responsive websites with motion, forms and launch support.'}}},
