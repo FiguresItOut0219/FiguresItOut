@@ -33,14 +33,14 @@ test('sends image input and selected model using the configured endpoint', async
   try { assert.equal((await analyzeSample({ key: 'test-key', model: 'deepseek-flash', endpoint: 'https://api.deepseek.com/chat/completions' }, 'data:image/png;base64,test', '', new AbortController().signal)).length, 1) }
   finally { globalThis.fetch = original }
 })
-test('replaces initial guesses using original pixel coordinates from dedicated localization', async () => {
+test('keeps normalized localization coordinates unchanged for non-square original images', async () => {
   const original = globalThis.fetch
   let calls = 0
   globalThis.fetch = async (_url, init) => {
     calls++
     const body = JSON.parse(String(init?.body))
     if (calls === 2) assert.match(body.messages[0].content[0].text, /534 × 691/)
-    const content = calls === 1 ? { parts: [part] } : { points: [{ id: 1, x: 267, y: 552.8 }] }
+    const content = calls === 1 ? { parts: [part] } : { points: [{ id: 1, x: 500, y: 800 }] }
     return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }))
   }
   try {
@@ -60,3 +60,4 @@ test('ignores facial expressions while preserving physically different parts', (
   assert.equal(result[0]?.description, 'Plastic (light yellow-green bean)')
   assert.equal(result[0]?.descriptionZh, '塑料（浅黄绿色豆子）')
 })
+

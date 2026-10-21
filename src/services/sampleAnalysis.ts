@@ -68,19 +68,20 @@ export async function analyzeSample(config: { key: string; model: string; endpoi
   }
   const parts = parseParts(await request(prompt))
   if (!dimensions) return parts
-  const grounding = await request(`重新独立定位这张原始样品照片中的指定部件。图片完整尺寸为 ${dimensions.width} × ${dimensions.height} 像素。必须使用原图像素坐标：左上[0,0]，右下[${dimensions.width},${dimensions.height}]，不是0到1000坐标。不要沿用之前的定位。先找到实际部件，再选择其可见实体表面上的一个像素点。每个点必须落在该部件自身的可见材料表面，不得落在相邻部件、孔洞或背景上。细小部件选择清晰可辨的实体区域；包围其他部件的外壳选择外壳自身区域。忽略尺子、纸张、水印和背景。编号与名称如下：${JSON.stringify(parts.map((p, i) => ({ id: i + 1, description: p.description, style: p.style })))}。仅返回JSON：{"points":[{"id":1,"x":原图像素横坐标,"y":原图像素纵坐标}]}，每个编号恰好一次。`)
+  const grounding = await request(`重新独立定位这张原始样品照片中的指定部件。图片完整尺寸为 ${dimensions.width} × ${dimensions.height} 像素。必须使用0到1000归一化坐标：整张原图左上[0,0]，右下[1000,1000]。x=原图横向位置除以原图宽度再乘1000，y=原图纵向位置除以原图高度再乘1000。不要返回原图像素或缩放后的像素。不要沿用之前的定位。先找到实际部件，再选择其可见实体表面上的一个像素点。每个点必须落在该部件自身的可见材料表面，不得落在相邻部件、孔洞或背景上。细小部件选择清晰可辨的实体区域；包围其他部件的外壳选择外壳自身区域。忽略尺子、纸张、水印和背景。编号与名称如下：${JSON.stringify(parts.map((p, i) => ({ id: i + 1, description: p.description, style: p.style })))}。仅返回JSON：{"points":[{"id":1,"x":0到1000归一化横坐标,"y":0到1000归一化纵坐标}]}，每个编号恰好一次。`)
   const data = JSON.parse(grounding.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/, ''))
-  if (!Array.isArray(data.points) || data.points.length !== parts.length) throw new Error('部件已识别，但精确定位结果不完整，请重新识别。')
+  if (!Array.isArray(data.points) || data.points.length !== parts.length) throw new Error('部件已识别，但独立定位结果不完整，请重新识别。')
   const seen = new Set<number>()
   for (const p of data.points) {
-    if (!Number.isInteger(p.id) || p.id < 1 || p.id > parts.length || seen.has(p.id) || !Number.isFinite(p.x) || !Number.isFinite(p.y) || p.x < 0 || p.y < 0 || p.x > dimensions.width || p.y > dimensions.height) throw new Error('精确定位坐标无效，请重新识别。')
+    if (!Number.isInteger(p.id) || p.id < 1 || p.id > parts.length || seen.has(p.id) || !Number.isFinite(p.x) || !Number.isFinite(p.y) || p.x < 0 || p.y < 0 || p.x > 1000 || p.y > 1000) throw new Error('独立定位坐标无效，请重新识别。')
     seen.add(p.id)
     const part = parts[p.id - 1]!
-    part.point = [p.x / dimensions.width * 1000, p.y / dimensions.height * 1000]
+    part.point = [p.x, p.y]
     part.label = [part.point[0] < 500 ? 80 : 920, part.point[1]]
   }
   return parts
 }
+
 
 
 
