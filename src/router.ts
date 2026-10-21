@@ -4,6 +4,7 @@ import LumaView from '@/views/LumaView.vue'
 import NorthstarView from '@/views/NorthstarView.vue'
 import SummitView from '@/views/SummitView.vue'
 const router=createRouter({history:createWebHistory(),scrollBehavior(to){return /^#[a-zA-Z][\w-]*$/.test(to.hash)?{el:to.hash,behavior:'smooth'}:{top:0}},routes:[
+  {path:'/tools/sample-annotation',component:()=>import('@/views/SampleAnnotationView.vue'),meta:{hideActionDock:true,seo:{title:'样品标注室 — FAN',description:'AI 识别样品材料、颜色与样式，校对并导出编号标注。'}}},
   {path:'/company',component:()=>import('@/components/company/CompanyShell.vue'),meta:{hideActionDock:true,seo:{title:'印作 — 公司订单系统',description:'订单、客户与印花文件的轻量管理后台。'}},children:[
     {path:'',redirect:'/company/orders'},
     {path:'overview',component:()=>import('@/components/company/CompanyOverview.vue')},
@@ -22,3 +23,4 @@ const router=createRouter({history:createWebHistory(),scrollBehavior(to){return 
   {path:'/work/summit',component:SummitView,meta:{seo:{title:'Summit Heating & Air — HVAC Landing Page',description:'A conversion-focused HVAC landing page demo for a trusted local service business.',image:'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1200&q=85'}}},
 ]})
 export default router
+
