@@ -32,7 +32,7 @@ export function useSampleAnnotation() {
     if (!config.value.key.trim()) { error.value = '请先在模型设置中填写 API Key。'; return }
     busy.value = true; error.value = ''; controller = new AbortController()
     const timer = setTimeout(() => controller?.abort(), 120000)
-    try { parts.value = await analyzeSample({ ...config.value }, image.value, notes.value, controller.signal); selected.value = 0 }
+    try { parts.value = await analyzeSample({ ...config.value }, image.value, notes.value, controller.signal, { ...dimensions }); selected.value = 0 }
     catch (e) { error.value = e instanceof Error && e.name === 'AbortError' ? '识别已取消或超时，可重新尝试。' : e instanceof TypeError ? '无法连接接口。请检查网络和接口地址；若接口不允许浏览器跨域访问，需要使用支持跨域的兼容接口。' : e instanceof Error ? e.message : '识别失败，请重试。' }
     finally { clearTimeout(timer); busy.value = false }
   }
@@ -59,5 +59,6 @@ export function useSampleAnnotation() {
   function merge() { parts.value = mergeRepeatedParts(parts.value); selected.value = 0 }
   return { language, reportText, provider, configs, config, image, filename, dimensions, notes, error, busy, parts, selected, ready, upload, analyze, add, remove, merge, exportImage, cancel: () => controller?.abort(), exportText: () => download(new Blob([reportText.value], { type: 'text/plain;charset=utf-8' }), `tested-parts-${language.value}.txt`) }
 }
+
 
 
