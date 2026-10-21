@@ -5,10 +5,12 @@ import { useSampleAnnotation } from '@/composables/useSampleAnnotation'
 import AnnotationCanvas from './AnnotationCanvas.vue'
 import PartInspector from './PartInspector.vue'
 import './sample.css'
-const { provider, config, image, filename, dimensions, notes, error, busy, parts, selected, ready, upload, analyze, add, remove, exportImage, exportText, cancel } = useSampleAnnotation()
-const settings = shallowRef(true), fileInput = shallowRef<HTMLInputElement>(), dragging = shallowRef(false)
-function update(i: number, field: 'material' | 'color' | 'style' | 'description', value: string) { const p = parts.value[i]; if (p) { p[field] = value; p.confirmed = false } }
-function move(i: number, kind: 'point' | 'label', value: [number, number]) { const p = parts.value[i]; if (p && !busy.value) { p[kind] = value; p.confirmed = false } }
+const { language, reportText, provider, config, image, filename, dimensions, notes, error, busy, parts, selected, ready, upload, analyze, add, remove, merge, exportImage, exportText, cancel } = useSampleAnnotation()
+const showReport = shallowRef(false), copied = shallowRef(false)
+async function copyReport() { try { await navigator.clipboard.writeText(reportText.value); copied.value = true } catch { error.value = '复制失败，请选中预览文字手动复制。' } }
+const settings = shallowRef(false), fileInput = shallowRef<HTMLInputElement>(), dragging = shallowRef(false)
+function update(i: number, field: 'material' | 'color' | 'style' | 'description' | 'descriptionZh', value: string) { const p = parts.value[i]; if (p) { p[field] = value; p.confirmed = false } }
+function move(i: number, kind: 'point' | 'label', value: [number, number]) { const p = parts.value[i]; if (p && !busy.value) { if (kind === 'point') { p.point = value; p.label[1] = value[1] } else { p.label = [value[0], p.point[1]] } p.confirmed = false } }
 function drop(e: DragEvent) { dragging.value = false; void upload(e.dataTransfer?.files[0]) }
 </script>
 <template>
@@ -18,16 +20,19 @@ function drop(e: DragEvent) { dragging.value = false; void upload(e.dataTransfer
     <div v-if="error" class="sa-error" role="alert">{{ error }}</div>
     <div class="sa-workspace"><section class="sa-stage"><div class="sa-section-title"><h2>样品原图</h2><button :disabled="busy" @click="fileInput?.click()"><Upload :size="15"/>{{ image ? '更换图片' : '上传图片' }}</button><input ref="fileInput" type="file" accept="image/png,image/jpeg,image/webp" hidden @change="upload(($event.target as HTMLInputElement).files?.[0]); ($event.target as HTMLInputElement).value = ''"/></div>
       <div class="sa-board" :class="{ dragging }" @dragover.prevent="dragging = true" @dragleave.prevent="dragging = false" @drop.prevent="drop">
-        <AnnotationCanvas v-if="image" :image="image" :parts="parts" :selected="selected" @select="selected = $event" @move="move"/>
+        <AnnotationCanvas v-if="image" :image="image" :dimensions="dimensions" :parts="parts" :selected="selected" @select="selected = $event" @move="move"/>
         <button v-else class="sa-upload" @click="fileInput?.click()"><span class="sa-upload-frame"><ScanLine :size="45" :stroke-width="1"/></span><strong>将样品图片放在这里</strong><span>拖拽上传，或点击选择文件</span><small>PNG / JPG / WebP · 最大 15 MB</small></button>
         <div v-if="busy" class="sa-loading" role="status"><ScanLine :size="28"/><strong>正在识别部件与定位…</strong><span>请保留此页面，最长等待 2 分钟</span><button @click="cancel">取消识别</button></div>
       </div>
       <div class="sa-image-meta"><span>{{ filename || '尚未上传图片' }}</span><span>{{ image ? `${dimensions.width} × ${dimensions.height} px` : '原图保留 · 仅叠加标注' }}</span></div>
-      <p v-if="parts.length" class="sa-muted">拖动红色编号或端点调整位置；也可聚焦后使用方向键微调。</p>
+      <p v-if="parts.length" class="sa-muted">编号可左右移动；拖动端点定位部件，引线始终水平。</p>
       <label class="sa-notes">补充信息 <span>选填</span><textarea v-model="notes" :disabled="busy" rows="2" placeholder="例如：豆荚挂件，链条为金属，其余为塑料。提供已知材料可帮助识别。"/></label>
       <div class="sa-analyze-row"><span>{{ parts.length ? '重新识别将替换当前部件清单' : '自动区分材料、颜色与部件样式' }}</span><button class="sa-primary" :disabled="!image || busy" @click="analyze"><ScanLine :size="17"/>{{ busy ? '正在识别…' : parts.length ? '重新识别' : '开始识别并标注' }}</button></div>
-    </section><PartInspector :parts="parts" :selected="selected" :disabled="busy || !image" @select="selected = $event" @update="update" @confirm="parts[$event]!.confirmed = true" @remove="remove" @add="add"/></div>
-    <footer class="sa-export"><div><b>{{ parts.filter(p => p.confirmed).length }} / {{ parts.length }} 个部件已确认</b><span>{{ ready ? '描述与标注已就绪，可以导出。' : '逐项检查描述与引线位置，确认后导出。' }}</span></div><button :disabled="!ready || busy" @click="exportText">导出描述 TXT</button><button class="sa-primary" :disabled="!ready || busy" @click="exportImage"><Download :size="17"/>导出标注图片</button></footer>
-    </main>
+    </section><PartInspector :parts="parts" :selected="selected" :disabled="busy || !image" @select="selected = $event" @update="update" @confirm="parts[$event]!.confirmed = true" @remove="remove" @add="add" @merge="merge"/></div>
+    <footer class="sa-export"><div><b>{{ parts.filter(p => p.confirmed).length }} / {{ parts.length }} 个部件已确认</b><span>{{ ready ? '描述与标注已就绪，可以导出。' : '逐项检查描述与引线位置，确认后导出。' }}</span></div><label class="sa-language">输出语言<select v-model="language" @change="copied = false"><option value="en">English</option><option value="zh">中文</option></select></label><button :disabled="!parts.length || busy" @click="showReport = true; copied = false">预览文字</button><button :disabled="!ready || busy" @click="exportText">下载文字</button><button class="sa-primary" :disabled="!ready || busy" @click="exportImage"><Download :size="17"/>导出标注图片</button></footer>
+    <div v-if="showReport" class="sa-report-backdrop" @click.self="showReport = false"><section role="dialog" aria-modal="true" aria-label="输出文字预览" class="sa-report-dialog" @keydown.esc="showReport = false"><div class="sa-section-title"><h2>{{ language === 'en' ? '英文描述预览' : '中文描述预览' }}</h2><button autofocus @click="showReport = false">关闭</button></div><pre tabindex="0">{{ reportText }}</pre><div class="sa-report-actions"><button @click="copyReport">{{ copied ? '已复制' : '复制文字' }}</button><button :disabled="!ready" @click="exportText">下载 TXT</button></div></section></div>    </main>
   </div>
 </template>
+
+
+
