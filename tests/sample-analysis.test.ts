@@ -92,3 +92,24 @@ test('default path performs only one request even when dimensions are supplied',
     assert.equal(result[0]?.label[1], part.point[1])
   } finally { globalThis.fetch = original }
 })
+test('accepts bilingual descriptions and missing optional grouping metadata', () => {
+  const result = parseParts(JSON.stringify({ parts: [{ point: [300, 500], description: { en: 'Metal (chain)', zh: '金属（链条）' } }, { point: [600, 400], description_en: 'Plastic (housing)', description_zh: '塑料（外壳）', color: null }] }))
+  assert.equal(result[0]?.description, 'Metal (chain)')
+  assert.equal(result[0]?.descriptionZh, '金属（链条）')
+  assert.equal(result[1]?.description, 'Plastic (housing)')
+  assert.equal(result[1]?.color, '')
+})
+test('retries a valid JSON response with missing required description once', async () => {
+  const original = globalThis.fetch
+  let calls = 0
+  globalThis.fetch = async () => {
+    calls++
+    const content = { parts: [calls === 1 ? { ...part, description: null } : part] }
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }))
+  }
+  try {
+    const result = await analyzeSample({ key: 'test', model: 'qwen3.7-flash', endpoint: 'https://example.com/api' }, 'test', '', new AbortController().signal)
+    assert.equal(calls, 2)
+    assert.equal(result[0]?.description, part.description)
+  } finally { globalThis.fetch = original }
+})
