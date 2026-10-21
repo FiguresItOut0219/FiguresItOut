@@ -44,7 +44,7 @@ test('keeps normalized localization coordinates unchanged for non-square origina
     return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }))
   }
   try {
-    const result = await analyzeSample({ key: 'test-key', model: 'qwen3.7-flash', endpoint: 'https://example.com/chat/completions' }, 'data:image/png;base64,test', '', new AbortController().signal, { width: 534, height: 691 })
+    const result = await analyzeSample({ key: 'test-key', model: 'qwen3.7-flash', endpoint: 'https://example.com/chat/completions' }, 'data:image/png;base64,test', '', new AbortController().signal, { width: 534, height: 691 }, true)
     assert.equal(calls, 2)
     assert.equal(result[0]?.point[0], 500)
     assert.ok(Math.abs(result[0]!.point[1] - 800) < 0.001)
@@ -61,3 +61,34 @@ test('ignores facial expressions while preserving physically different parts', (
   assert.equal(result[0]?.descriptionZh, '塑料（浅黄绿色豆子）')
 })
 
+test('retries incomplete HTTP or model JSON once and does not expose parser errors', async () => {
+  const original = globalThis.fetch
+  try {
+    for (const broken of ['', '{"choices":', JSON.stringify({ choices: [{ message: { content: '{"parts":' } }] })]) {
+      let calls = 0
+      globalThis.fetch = async () => {
+        calls++
+        return new Response(calls === 1 ? broken : JSON.stringify({ choices: [{ message: { content: JSON.stringify({ parts: [part] }) } }] }))
+      }
+      const result = await analyzeSample({ key: 'test', model: 'qwen3.7-flash', endpoint: 'https://example.com/api' }, 'data:image/png;base64,test', '', new AbortController().signal)
+      assert.equal(calls, 2)
+      assert.equal(result.length, 1)
+    }
+    let calls = 0
+    globalThis.fetch = async () => { calls++; return new Response('') }
+    await assert.rejects(() => analyzeSample({ key: 'test', model: 'qwen3.7-flash', endpoint: 'https://example.com/api' }, 'test', '', new AbortController().signal), /接口返回了空响应/)
+    assert.equal(calls, 2)
+  } finally { globalThis.fetch = original }
+})
+
+test('default path performs only one request even when dimensions are supplied', async () => {
+  const original = globalThis.fetch
+  let calls = 0
+  globalThis.fetch = async () => { calls++; return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ parts: [part] }) } }] })) }
+  try {
+    const result = await analyzeSample({ key: 'test', model: 'qwen3.7-flash', endpoint: 'https://example.com/api' }, 'test', '', new AbortController().signal, { width: 534, height: 691 })
+    assert.equal(calls, 1)
+    assert.deepEqual(result[0]?.point, part.point)
+    assert.equal(result[0]?.label[1], part.point[1])
+  } finally { globalThis.fetch = original }
+})
