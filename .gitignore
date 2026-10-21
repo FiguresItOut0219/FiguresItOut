@@ -5,3 +5,7 @@ dist/
 .env
 .env.*
 !.env.example
+
+# Downloaded upstream source archive; adapted production components live in src/components/company.
+vendor/art-design-pro-main/
+vendor/art-design-pro-main.zip

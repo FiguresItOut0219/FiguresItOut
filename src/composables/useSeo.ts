@@ -21,7 +21,7 @@ function setMeta(selector: string, attribute: 'name' | 'property', key: string, 
 
 export function useSeo(route: RouteLocationNormalizedLoaded) {
   watch(
-    () => route.fullPath,
+    () => [route.fullPath, route.meta.seo],
     () => {
       const meta = route.meta.seo as SeoMeta | undefined
       if (!meta) return

@@ -12,3 +12,8 @@ Pages before using it:
 
 `figuresitout.xyz` must first be verified in Resend, using the DNS records Resend
 provides. Never put the API key in a `VITE_` variable or commit it to Git.
+
+
+## Print order demo
+
+See [印作订单系统前端演示](docs/print-company-demo.md) for the demo flow, upstream attribution, storage limitations, and verification commands.

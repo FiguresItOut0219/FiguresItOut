@@ -6,7 +6,7 @@ const action = { label: 'Start a project', detail: 'Available for selected work'
 </script>
 
 <template>
-  <RouterLink class="action-dock" :class="`action-dock--${route.path.split('/').at(-1) || 'home'}`" :to="{ path: '/', hash: '#contact' }">
+  <RouterLink class="action-dock" :class="`action-dock--${route.path.split('/').at(-1) || 'home'}`" :to="{ path: '/portfolio', hash: '#contact' }">
     <span class="action-dot" aria-hidden="true"></span>
     <span class="action-copy"><small>{{ action.detail }}</small><b>{{ action.label }}</b></span>
     <span class="action-arrow" aria-hidden="true">↗</span>
