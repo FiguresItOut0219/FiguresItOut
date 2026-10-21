@@ -1,5 +1,5 @@
 import { computed, onBeforeUnmount, reactive, ref, shallowRef } from 'vue'
-import { analyzeSample, mergeRepeatedParts, providers, type Part } from '@/services/sampleAnalysis'
+import { analyzeSample, providers, type Part } from '@/services/sampleAnalysis'
 import { formatSampleReport, type ReportLanguage } from '@/services/sampleReport'
 export function useSampleAnnotation() {
   const language = shallowRef<ReportLanguage>('en')
@@ -10,7 +10,7 @@ export function useSampleAnnotation() {
   const image = shallowRef(''), filename = shallowRef(''), notes = shallowRef(''), error = shallowRef(''), busy = shallowRef(false)
   const parts = ref<Part[]>([]), selected = shallowRef(0)
   const dimensions = reactive({ width: 0, height: 0 })
-  const ready = computed(() => !!parts.value.length && parts.value.every(p => p.confirmed))
+  const ready = computed(() => !!image.value && !!parts.value.length)
   let controller: AbortController | undefined
   let revision = 0
   onBeforeUnmount(() => controller?.abort())
@@ -56,9 +56,10 @@ export function useSampleAnnotation() {
       c.toBlob(blob => { if (blob) download(blob, `${filename.value.replace(/\.[^.]+$/, '')}-annotated.png`); else error.value = '导出失败，请减小图片后重试。' }, 'image/png')
     } catch (e) { error.value = e instanceof Error ? e.message : '导出失败' }
   }
-  function merge() { parts.value = mergeRepeatedParts(parts.value); selected.value = 0 }
-  return { language, reportText, provider, configs, config, image, filename, dimensions, notes, error, busy, parts, selected, ready, upload, analyze, add, remove, merge, exportImage, cancel: () => controller?.abort(), exportText: () => download(new Blob([reportText.value], { type: 'text/plain;charset=utf-8' }), `tested-parts-${language.value}.txt`) }
+  return { language, reportText, provider, configs, config, image, filename, dimensions, notes, error, busy, parts, selected, ready, upload, analyze, add, remove, exportImage, cancel: () => controller?.abort(), exportText: () => download(new Blob([reportText.value], { type: 'text/plain;charset=utf-8' }), `tested-parts-${language.value}.txt`) }
 }
+
+
 
 
 
