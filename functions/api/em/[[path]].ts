@@ -14,22 +14,28 @@
  * 「更具体的路由（通配符更少）优先」，/api/em/chat 会落到 chat.ts。
  */
 
-import { fetchIndices, fetchKlines, fetchQuotes, resolveCode } from '../../../shared/marketSources'
+import { fetchIndices, fetchKlines, fetchQuotes, resolveCode } from '../../../shared/marketSources.ts'
 
 interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> }
 }
 
 /**
- * Cloudflare 运行时特有的全局。项目没有安装 @cloudflare/workers-types，
- * 这里按本次用到的形状本地声明，避免为一个类型包装引入整个依赖。
- * 若之后要装：pnpm add -D @cloudflare/workers-types，再把这段删掉。
+ * Cache API 的安全访问。
+ *
+ * 不用 `declare const caches` —— 那种写法依赖打包器正确擦除声明，
+ * 一旦没擦掉，`caches` 就是 undefined，`caches.default` 直接 TypeError，
+ * 表现为该 Function 下所有路由都返回 500（连 default 分支的 404 都到不了）。
+ * 改成运行时从 globalThis 取，取不到就退化成「不缓存」，绝不抛错。
  */
-declare const caches: {
-  default: {
-    match(request: string): Promise<Response | undefined>
-    put(request: string, response: Response): Promise<void>
-  }
+const cacheStore = () => {
+  const store = (globalThis as { caches?: { default?: CacheLike } }).caches
+  return store?.default ?? null
+}
+
+interface CacheLike {
+  match(request: string): Promise<Response | undefined>
+  put(request: string, response: Response): Promise<void>
 }
 
 const EASTMONEY_TOKEN = '7eea3edcaed734bea9cbfc24409ed989'
@@ -77,12 +83,25 @@ async function getWithRetry(url: string, attempts = 4): Promise<Response | null>
   return null
 }
 
-export async function onRequestGet(context: {
+interface HandlerContext {
   request: Request
   env: Env
   params: Record<string, string | string[] | undefined>
   waitUntil: (promise: Promise<unknown>) => void
-}) {
+}
+
+export async function onRequestGet(context: HandlerContext) {
+  try {
+    return await handleGet(context)
+  } catch (error) {
+    // 兜底：任何未预期异常都转成可诊断的 JSON，而不是 Cloudflare 的裸 500。
+    // 之前全线 500 时只能看到 text/plain 空体，什么都查不出来。
+    console.error('[em-proxy] unhandled', error)
+    return errorResponse(`服务端异常：${error instanceof Error ? error.message : String(error)}`, 500)
+  }
+}
+
+async function handleGet(context: HandlerContext) {
   const url = new URL(context.request.url)
   const segments = context.params.path
   const route = Array.isArray(segments) ? segments[0] : (segments ?? '')
@@ -99,7 +118,8 @@ export async function onRequestGet(context: {
   }
 
   const cacheKey = url.pathname + url.search
-  const cached = await caches.default.match(cacheKey)
+  const store = cacheStore()
+  const cached = store ? await store.match(cacheKey).catch(() => undefined) : undefined
   if (cached) {
     const headers = new Headers(cached.headers)
     headers.set('X-Cache', 'HIT')
@@ -183,7 +203,13 @@ export async function onRequestGet(context: {
 
   // 只缓存成功且非空的响应，避免把上游故障缓存成一整段时间
   const bodyText = JSON.stringify(payload)
-  if (bodyText.length > 2) context.waitUntil(caches.default.put(cacheKey, fresh.clone()))
+  if (bodyText.length > 2 && store) {
+    try {
+      context.waitUntil(store.put(cacheKey, fresh.clone()))
+    } catch {
+      /* 缓存写入失败不影响主流程 */
+    }
+  }
 
   return fresh
 }
