@@ -223,5 +223,20 @@ export default defineConfig(({ mode }) => {
     // 顺序有意义：llmDevProxy 先注册，没有密钥时调用 next() 落到 emDevApi 统一回 503
     plugins: [vue(), llmDevProxy(llm), emDevApi()],
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+    build: {
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [
+              {
+                // Keep Vue's runtime together to avoid a circular import between output chunks.
+                name: 'vue-vendor',
+                test: /[\\/]node_modules[\\/](?:vue|@vue[\\/](?:runtime-core|runtime-dom|reactivity|shared))[\\/]/,
+              },
+            ],
+          },
+        },
+      },
+    },
   }
 })
