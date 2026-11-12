@@ -120,7 +120,7 @@ export interface MarketSnapshot {
   indices: IndexQuote[]
   sectorsUp: SectorQuote[]
   sectorsDown: SectorQuote[]
-  breadth: Breadth
+  breadth: Breadth | null
   /** 数据时间（北京时间 HH:mm） */
   updatedAt: string
 }
@@ -218,7 +218,7 @@ export async function fetchBreadth(signal?: AbortSignal): Promise<Breadth> {
   const data = await getJson<Record<string, unknown>>('/breadth', signal)
 
   const fenbu = (data as { data?: { fenbu?: Array<Record<string, number>> } }).data?.fenbu
-  if (fenbu) {
+  if (Array.isArray(fenbu) && fenbu.length) {
     const distribution: BreadthBucket[] = []
     let up = 0
     let down = 0
@@ -244,26 +244,20 @@ export async function fetchBreadth(signal?: AbortSignal): Promise<Breadth> {
     }
   }
 
+  const { up, down, flat } = data
+  if (typeof up !== 'number' || typeof down !== 'number' || typeof flat !== 'number') {
+    throw new MarketApiError('涨跌分布数据暂不可用', '/breadth')
+  }
+
   return {
-    up: Number(data.up ?? 0),
-    down: Number(data.down ?? 0),
-    flat: Number(data.flat ?? 0),
+    up,
+    down,
+    flat,
     limitUp: Number(data.limitUp ?? 0),
     limitDown: Number(data.limitDown ?? 0),
     total: Number(data.total ?? 0),
     distribution: [],
   }
-}
-
-/** 大盘一揽子数据，页面初始化用 */
-export async function fetchMarketSnapshot(signal?: AbortSignal): Promise<MarketSnapshot> {
-  const [indices, sectorsUp, sectorsDown, breadth] = await Promise.all([
-    fetchIndices(signal),
-    fetchSectors('up', 8, signal),
-    fetchSectors('down', 8, signal),
-    fetchBreadth(signal),
-  ])
-  return { indices, sectorsUp, sectorsDown, breadth, updatedAt: formatBeijingTime(new Date()) }
 }
 
 /** 北京时间 HH:mm */

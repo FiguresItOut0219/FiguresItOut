@@ -119,7 +119,9 @@ function formatMarket(ctx: AgentContext): string {
   const downSectors = snapshot.sectorsDown.slice(0, 3).map((item) => `${item.name} ${item.changePct}%`).join('，')
   return [
     `主要指数：${indexLines}。`,
-    `全市场上涨 ${breadth.up} 家、下跌 ${breadth.down} 家、平盘 ${breadth.flat} 家，涨停 ${breadth.limitUp} 家、跌停 ${breadth.limitDown} 家。`,
+    breadth
+      ? `全市场上涨 ${breadth.up} 家、下跌 ${breadth.down} 家、平盘 ${breadth.flat} 家，涨停 ${breadth.limitUp} 家、跌停 ${breadth.limitDown} 家。`
+      : '涨跌家数暂不可用。',
     upSectors ? `领涨板块：${upSectors}。` : '',
     downSectors ? `领跌板块：${downSectors}。` : '',
     `数据截至北京时间 ${snapshot.updatedAt}，来源为东方财富公开行情接口。`,

@@ -12,9 +12,12 @@ import { LineChart, RefreshCw } from 'lucide-vue-next'
 import '@/components/stock/stock.css'
 import {
   DEFAULT_WATCHLIST,
+  fetchBreadth,
   fetchCandles,
-  fetchMarketSnapshot,
+  fetchIndices,
   fetchQuotes,
+  fetchSectors,
+  formatBeijingTime,
   resolveCode,
   type MarketSnapshot,
   type StockQuote,
@@ -72,13 +75,16 @@ const candlesMap = ref<Record<string, Candle[]>>({})
 const selectedCode = ref('')
 
 const loading = ref(false)
-const error = ref<string | null>(null)
+const stocksLoading = ref(false)
+const failures = ref<string[]>([])
+const error = computed(() => failures.value.length ? failures.value.join('；') : null)
 const notice = ref<string | null>(null)
 const autoRefresh = ref(false)
 let timer: number | undefined
+let activeRequest: AbortController | undefined
 
 const sourceState = computed<'live' | 'stale' | 'error'>(() => {
-  if (error.value && !snapshot.value && !quotes.value.length) return 'error'
+  if (error.value && !loading.value && !snapshot.value && !quotes.value.length) return 'error'
   if (error.value) return 'stale'
   return 'live'
 })
@@ -86,44 +92,83 @@ const sourceState = computed<'live' | 'stale' | 'error'>(() => {
 const sourceLabel = computed(() => {
   if (sourceState.value === 'error') return '数据源不可用'
   if (sourceState.value === 'stale') return '部分数据不可用'
-  return snapshot.value ? `实时 · ${snapshot.value.updatedAt}` : '加载中'
+  if (snapshot.value) return `最近更新 · ${snapshot.value.updatedAt}`
+  return quotes.value.length ? '自选行情已加载' : '加载中'
 })
 
 const ready = computed(() => analyses.value.some((item) => item !== null))
 
 /* ------------------------------------------------------------------ 数据加载 */
 
-async function loadAll() {
-  loading.value = true
-  error.value = null
-  try {
-    const market = await fetchMarketSnapshot()
-    snapshot.value = market
-
-    const quoteList = await fetchQuotes(watchlist.value)
-    quotes.value = quoteList
-    if (!quoteList.some((item) => item.code === selectedCode.value)) selectedCode.value = quoteList[0]?.code ?? ''
-
-    const results = await Promise.all(
-      quoteList.map(async (quote) => {
-        try {
-          const candles = await fetchCandles(quote.secid, 120)
-          candlesMap.value = { ...candlesMap.value, [quote.secid]: candles }
-          return candles.length >= 20 ? analyseStock(quote, candles) : null
-        } catch {
-          return null
-        }
-      }),
-    )
-    analyses.value = results
-
-    const failed = results.filter((item) => item === null).length
-    if (failed) notice.value = `${failed} 只股票的 K 线数据获取失败，已跳过其技术分析`
-  } catch (fetchError) {
-    error.value = fetchError instanceof Error ? fetchError.message : '未知错误'
-  } finally {
-    loading.value = false
+function updateMarket(data: Partial<MarketSnapshot>) {
+  snapshot.value = {
+    indices: [],
+    sectorsUp: [],
+    sectorsDown: [],
+    breadth: null,
+    ...snapshot.value,
+    ...data,
+    updatedAt: formatBeijingTime(new Date()),
   }
+}
+
+async function loadStocks(signal: AbortSignal) {
+  const requestedCodes = watchlist.value
+  const quoteList = await fetchQuotes(requestedCodes, signal)
+  if (signal.aborted) return
+  if (requestedCodes.length && !quoteList.length) throw new Error('数据源未返回行情')
+
+  quotes.value = quoteList
+  analyses.value = []
+  candlesMap.value = {}
+  if (!quoteList.some((item) => item.code === selectedCode.value)) selectedCode.value = quoteList[0]?.code ?? ''
+
+  const results = await Promise.all(quoteList.map(async (quote) => {
+    try {
+      const candles = await fetchCandles(quote.secid, 120, signal)
+      return { code: quote.code, candles, analysis: candles.length >= 20 ? analyseStock(quote, candles) : null }
+    } catch {
+      return { code: quote.code, candles: [], analysis: null }
+    }
+  }))
+  if (signal.aborted) return
+
+  candlesMap.value = Object.fromEntries(results.map(({ code, candles }) => [code, candles]))
+  analyses.value = results.map(({ analysis }) => analysis)
+  const failed = results.filter(({ analysis }) => analysis === null).length
+  if (failed) failures.value.push(`${failed} 只自选股的 K 线不足，暂无法计算指标`)
+}
+
+async function loadAll() {
+  activeRequest?.abort()
+  activeRequest = new AbortController()
+  const { signal } = activeRequest
+  loading.value = true
+  stocksLoading.value = true
+  failures.value = []
+
+  async function load<T>(label: string, request: Promise<T>, apply?: (data: T) => void) {
+    try {
+      const data = await request
+      if (!signal.aborted) apply?.(data)
+    } catch (cause) {
+      if (!signal.aborted) failures.value.push(`${label}：${cause instanceof Error ? cause.message : '请求失败'}`)
+    }
+  }
+
+  await Promise.all([
+    load('指数', fetchIndices(signal), (indices) => {
+      if (!indices.length) throw new Error('数据源未返回行情')
+      updateMarket({ indices })
+    }),
+    load('领涨板块', fetchSectors('up', 8, signal), (sectorsUp) => updateMarket({ sectorsUp })),
+    load('领跌板块', fetchSectors('down', 8, signal), (sectorsDown) => updateMarket({ sectorsDown })),
+    load('涨跌家数', fetchBreadth(signal), (breadth) => updateMarket({ breadth })),
+    load('自选股行情', loadStocks(signal)).finally(() => {
+      if (!signal.aborted) stocksLoading.value = false
+    }),
+  ])
+  if (!signal.aborted) loading.value = false
 }
 
 function addCode(raw: string) {
@@ -157,6 +202,7 @@ function toggleAutoRefresh() {
 
 onMounted(loadAll)
 onBeforeUnmount(() => {
+  activeRequest?.abort()
   if (timer) window.clearInterval(timer)
 })
 </script>
@@ -199,6 +245,7 @@ onBeforeUnmount(() => {
 
     <main class="sw-main">
       <p v-if="notice" class="sw-note sw-note-warn" style="margin-bottom: 16px">{{ notice }}</p>
+      <p v-if="error" class="sw-note sw-note-warn" role="status">{{ error }}。可刷新重试。</p>
 
       <DashboardTab
         v-if="activeTab === 'dashboard'"
@@ -209,7 +256,7 @@ onBeforeUnmount(() => {
         :candles-map="candlesMap"
         :selected-code="selectedCode"
         :loading="loading"
-        :error="error"
+        :stocks-loading="stocksLoading"
         @select="selectedCode = $event"
         @add="addCode"
         @remove="removeCode"

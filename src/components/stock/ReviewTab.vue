@@ -8,7 +8,7 @@ const props = defineProps<{ snapshot: MarketSnapshot | null; loading: boolean }>
 
 const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`)
 
-const distMax = computed(() => Math.max(...(props.snapshot?.breadth.distribution.map((item) => item.count) ?? [1]), 1))
+const distMax = computed(() => Math.max(...(props.snapshot?.breadth?.distribution.map((item) => item.count) ?? []), 1))
 
 const label = (bucket: number) => {
   if (bucket === 11) return '涨停'
@@ -31,29 +31,30 @@ const bucketColor = (bucket: number) => {
 
 <template>
   <section>
-    <div v-if="!snapshot" class="sw-panel"><div class="sw-empty">正在加载大盘数据…</div></div>
+    <div v-if="!snapshot" class="sw-panel"><div class="sw-empty">{{ loading ? '正在加载大盘数据…' : '大盘数据暂不可用' }}</div></div>
 
     <template v-else>
       <div class="sw-review-grid">
         <div style="display: flex; flex-direction: column; gap: 18px">
           <div class="sw-panel">
-            <div class="sw-panel-head"><h2>主要指数</h2><p>数据截至北京时间 {{ snapshot.updatedAt }}</p></div>
+            <div class="sw-panel-head"><h2>主要指数</h2></div>
             <div class="sw-panel-body" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px">
               <div v-for="index in snapshot.indices" :key="index.code" class="sw-block" style="padding: 13px 15px">
                 <div class="sw-index-name">{{ index.name }}</div>
                 <div class="sw-index-price" :class="index.changePct > 0 ? 'sw-up' : index.changePct < 0 ? 'sw-down' : 'sw-flat'">{{ index.price }}</div>
                 <div class="sw-index-change" :class="index.changePct > 0 ? 'sw-up' : index.changePct < 0 ? 'sw-down' : 'sw-flat'">{{ sign(index.change) }} ({{ sign(index.changePct) }}%)</div>
               </div>
+              <div v-if="!snapshot.indices.length" class="sw-empty">{{ loading ? '正在加载指数…' : '指数暂不可用' }}</div>
             </div>
           </div>
 
           <div class="sw-panel">
             <div class="sw-panel-head">
               <h2>涨跌分布</h2>
-              <p>上涨 {{ snapshot.breadth.up }} · 下跌 {{ snapshot.breadth.down }} · 平盘 {{ snapshot.breadth.flat }}</p>
+              <p v-if="snapshot.breadth">上涨 {{ snapshot.breadth.up }} · 下跌 {{ snapshot.breadth.down }} · 平盘 {{ snapshot.breadth.flat }}</p>
             </div>
             <div class="sw-panel-body">
-              <div v-if="!snapshot.breadth.distribution.length" class="sw-empty">分布数据暂不可用</div>
+              <div v-if="!snapshot.breadth?.distribution.length" class="sw-empty">{{ loading && !snapshot.breadth ? '正在加载涨跌分布…' : '分布数据暂不可用' }}</div>
               <div v-else class="sw-dist">
                 <div v-for="item in snapshot.breadth.distribution" :key="item.bucket" class="sw-dist-row">
                   <span>{{ label(item.bucket) }}</span>
@@ -79,7 +80,7 @@ const bucketColor = (bucket: number) => {
                 </span>
                 <span class="sw-sector-pct sw-up">{{ sign(sector.changePct) }}%</span>
               </div>
-              <div v-if="!snapshot.sectorsUp.length" class="sw-empty">暂无数据</div>
+              <div v-if="!snapshot.sectorsUp.length" class="sw-empty">{{ loading ? '正在加载领涨板块…' : '领涨板块暂不可用' }}</div>
             </div>
           </div>
 
@@ -94,7 +95,7 @@ const bucketColor = (bucket: number) => {
                 </span>
                 <span class="sw-sector-pct sw-down">{{ sector.changePct }}%</span>
               </div>
-              <div v-if="!snapshot.sectorsDown.length" class="sw-empty">暂无数据</div>
+              <div v-if="!snapshot.sectorsDown.length" class="sw-empty">{{ loading ? '正在加载领跌板块…' : '领跌板块暂不可用' }}</div>
             </div>
           </div>
         </div>

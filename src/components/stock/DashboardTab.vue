@@ -18,7 +18,7 @@ const props = defineProps<{
   candlesMap: Record<string, Candle[]>
   selectedCode: string
   loading: boolean
-  error: string | null
+  stocksLoading: boolean
 }>()
 
 const emit = defineEmits<{
@@ -39,8 +39,8 @@ const breadthMax = computed(() => {
   return Math.max(breadth.up, breadth.down, breadth.flat, 1)
 })
 
-const breadthUpPct = computed(() => ((props.snapshot?.breadth.up ?? 0) / breadthMax.value) * 100)
-const breadthDownPct = computed(() => ((props.snapshot?.breadth.down ?? 0) / breadthMax.value) * 100)
+const breadthUpPct = computed(() => ((props.snapshot?.breadth?.up ?? 0) / breadthMax.value) * 100)
+const breadthDownPct = computed(() => ((props.snapshot?.breadth?.down ?? 0) / breadthMax.value) * 100)
 
 const sign = (value: number) => (value >= 0 ? `+${value}` : `${value}`)
 
@@ -54,10 +54,6 @@ function submitCode() {
 
 <template>
   <section>
-    <div v-if="error" class="sw-note sw-note-warn">
-      <b>行情获取失败：</b>{{ error }}。可能是数据源临时不可用或触发了限流，点击右上角「刷新」重试；下方仍会展示已缓存或上一次成功加载的内容。
-    </div>
-
     <!-- 大盘概览 -->
     <div class="sw-overview">
       <div v-for="index in snapshot?.indices ?? []" :key="index.code" class="sw-index">
@@ -69,21 +65,21 @@ function submitCode() {
           {{ sign(index.change) }} ({{ sign(index.changePct) }}%)
         </div>
       </div>
-      <div v-if="!snapshot" class="sw-index"><div class="sw-skeleton" style="height: 22px; margin-bottom: 8px" /><div class="sw-skeleton" style="width: 60%" /></div>
+      <div v-if="!snapshot?.indices.length" class="sw-index">{{ loading ? '正在加载指数…' : '指数暂不可用' }}</div>
     </div>
 
-    <div class="sw-breadth">
-      <div class="sw-breadth-item"><span>上涨</span><b class="sw-up">{{ snapshot?.breadth.up ?? '—' }}</b></div>
-      <div class="sw-breadth-item"><span>下跌</span><b class="sw-down">{{ snapshot?.breadth.down ?? '—' }}</b></div>
-      <div class="sw-breadth-item"><span>平盘</span><b>{{ snapshot?.breadth.flat ?? '—' }}</b></div>
-      <div class="sw-breadth-item"><span>涨停</span><b class="sw-up">{{ snapshot?.breadth.limitUp ?? '—' }}</b></div>
-      <div class="sw-breadth-item"><span>跌停</span><b class="sw-down">{{ snapshot?.breadth.limitDown ?? '—' }}</b></div>
+    <div v-if="snapshot?.breadth" class="sw-breadth">
+      <div class="sw-breadth-item"><span>上涨</span><b class="sw-up">{{ snapshot.breadth.up }}</b></div>
+      <div class="sw-breadth-item"><span>下跌</span><b class="sw-down">{{ snapshot.breadth.down }}</b></div>
+      <div class="sw-breadth-item"><span>平盘</span><b>{{ snapshot.breadth.flat }}</b></div>
+      <div class="sw-breadth-item"><span>涨停</span><b class="sw-up">{{ snapshot.breadth.limitUp }}</b></div>
+      <div class="sw-breadth-item"><span>跌停</span><b class="sw-down">{{ snapshot.breadth.limitDown }}</b></div>
       <div class="sw-breadth-bar" aria-hidden="true">
         <i :style="{ width: `${breadthUpPct}%`, background: 'var(--up)' }" />
         <i :style="{ width: `${breadthDownPct}%`, background: 'var(--down)' }" />
       </div>
-      <div class="sw-breadth-item" style="margin-left: auto"><span>数据时间</span><b style="font-size: 13px">{{ snapshot?.updatedAt ?? '—' }}</b></div>
     </div>
+    <div v-else class="sw-breadth">{{ loading ? '正在加载涨跌家数…' : '涨跌家数暂不可用' }}</div>
 
     <div class="sw-dash">
       <!-- 自选股 -->
@@ -119,7 +115,7 @@ function submitCode() {
                   }"
                 />
               </span>
-              <b>{{ analyses[index] ? `${analyses[index]!.score} · ${analyses[index]!.rating}` : '计算中' }}</b>
+              <b>{{ analyses[index] ? `${analyses[index]!.score} · ${analyses[index]!.rating}` : stocksLoading ? '计算中' : '指标暂不可用' }}</b>
             </span>
           </button>
         </div>
@@ -135,7 +131,7 @@ function submitCode() {
 
       <!-- 分析卡片 -->
       <div class="sw-analysis">
-        <div v-if="!selectedAnalysis" class="sw-panel"><div class="sw-empty">正在计算技术指标…</div></div>
+        <div v-if="!selectedAnalysis" class="sw-panel"><div class="sw-empty">{{ stocksLoading ? '正在加载自选股行情和技术指标…' : '暂无可用的个股技术指标' }}</div></div>
 
         <template v-else>
           <div class="sw-panel">
