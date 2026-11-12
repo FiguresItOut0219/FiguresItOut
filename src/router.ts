@@ -14,6 +14,7 @@ const router=createRouter({history:createWebHistory(),scrollBehavior(to){return 
   ]},
   {path:'/tools/print-studio',name:'print-studio',component:()=>import('@/views/PrintEditorView.vue'),meta:{seo:{title:'印作 — 在线印花设计工作台',description:'自主排版与高清印花文件导出'},hideActionDock:true}},
   {path:'/tools/home-cashflow',name:'home-cashflow',component:()=>import('@/views/HomeCashflowView.vue'),meta:{seo:{title:'买房现金流计算器 — FAN',description:'计算购房贷款、月度支出与家庭现金流。'},hideActionDock:true}},
+  {path:'/tools/stock-workbench',name:'stock-workbench',component:()=>import('@/views/StockWorkbenchView.vue'),meta:{hideActionDock:true,seo:{title:'股票智能分析工作台 — FAN',description:'多市场实时行情、大盘复盘与自选股技术指标看板。'}}},
   {path:'/game',name:'game',component:()=>import('@/views/GameView.vue'),meta:{seo:{title:'Game — FAN',description:'A dedicated space for browser games and playful experiments by FAN.'}}},
   {path:'/game/runner',name:'game-runner',component:()=>import('@/views/RunnerView.vue'),meta:{seo:{title:'奶蛙跑酷 — FAN Game',description:'在三条跑道间闪避障碍、跳跃和收集金币的 3D 奶蛙跑酷游戏。'}}},
   {path:'/',name:'home',component:HomeView,meta:{hideActionDock:true,seo:{title:'FAN — 功能导航',description:'在线印花设计、买房现金流计算、浏览器游戏与精选网站作品，一个入口直达。'}}},

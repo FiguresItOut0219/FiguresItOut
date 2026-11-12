@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ArrowUpRight, Calculator, Gamepad2, Layers3, Monitor, Printer, Utensils, Wrench } from 'lucide-vue-next'
+import { ArrowUpRight, Calculator, ChartLine, Gamepad2, Layers3, Monitor, Printer, Utensils, Wrench } from 'lucide-vue-next'
 import type { SiteEntry } from '@/data/sites'
 defineProps<{ site: SiteEntry; featured?: boolean }>()
-const icons = { print: Printer, calculator: Calculator, game: Gamepad2, portfolio: Monitor, restaurant: Utensils, studio: Layers3, service: Wrench }
+const icons = { print: Printer, calculator: Calculator, game: Gamepad2, portfolio: Monitor, restaurant: Utensils, studio: Layers3, service: Wrench, stock: ChartLine }
 </script>
 <template>
   <RouterLink :to="site.path" class="site-entry" :class="[{ 'site-entry-featured': featured }, `site-${site.icon}`]">

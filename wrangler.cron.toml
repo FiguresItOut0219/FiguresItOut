@@ -1,0 +1,33 @@
+# 每日股票分析 Worker 配置 —— 独立于站点部署
+#
+# 站点本身由 Cloudflare Pages 提供（含 functions/api/em/[[path]].ts 行情代理）；
+# Pages Functions 不支持 Cron Trigger，所以定时任务单独做成一个 Worker。
+#
+# 部署步骤：
+#   1. pnpm add -D wrangler @cloudflare/workers-types
+#   2. pnpm wrangler kv namespace create STOCK_KV        # 把返回的 id 填到下面
+#   3. pnpm wrangler secret put STOCK_LIST               # 例如 600519,300750,hk00700,AAPL
+#      pnpm wrangler secret put WECHAT_WEBHOOK_URL       # 通知渠道，至少配一个
+#   4. pnpm wrangler deploy -c wrangler.cron.toml
+#
+# 本地联调：pnpm wrangler dev -c wrangler.cron.toml
+
+name = "agency-portfolio-daily-analysis"
+main = "worker/daily-analysis.ts"
+compatibility_date = "2026-11-12"
+
+# 自选股列表、各通知渠道 webhook 一律走 secret，不要写在这里
+# pnpm wrangler secret put <NAME>
+[[kv_namespaces]]
+binding = "STOCK_KV"
+# ↓↓↓ 用 `wrangler kv namespace create STOCK_KV` 的返回值替换
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+# 每个工作日 10:00 UTC = 北京时间 18:00 跑一次
+# cron 只按周一到周五触发，不识别 A 股节假日；
+# Worker 内部会通过涨跌分布接口判断当天是否交易日，非交易日直接跳过
+[triggers]
+crons = ["0 10 * * 1-5"]
+
+[observability]
+enabled = true
