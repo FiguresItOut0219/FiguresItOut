@@ -132,12 +132,14 @@
 
 .sw-watch { display: flex; flex-direction: column; }
 .sw-watch-list { display: flex; flex-direction: column; }
+.sw-watch-entry { display: flex; align-items: center; gap: 6px; padding-right: 12px; }
+.sw-watch-entry + .sw-watch-entry { border-top: 1px solid var(--line); }
+.sw-watch-entry > .sw-btn { flex-shrink: 0; }
 .sw-watch-row {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px;
-  width: 100%; padding: 12px 16px; border: 0; border-bottom: 1px solid var(--line);
+  flex: 1; min-width: 0; padding: 12px 16px; border: 0;
   background: none; text-align: left;
 }
-.sw-watch-row:last-child { border-bottom: 0; }
 .sw-watch-row:hover { background: var(--panel-2); }
 .sw-watch-row[aria-current="true"] { background: #5b8cff14; box-shadow: inset 3px 0 0 var(--accent); }
 .sw-watch-name { font-size: 13.5px; font-weight: 600; }

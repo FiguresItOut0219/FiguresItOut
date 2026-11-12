@@ -11,7 +11,6 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { LineChart, RefreshCw } from 'lucide-vue-next'
 import '@/components/stock/stock.css'
 import {
-  DEFAULT_WATCHLIST,
   fetchBreadth,
   fetchCandles,
   fetchIndices,
@@ -44,14 +43,18 @@ function loadWatchlist(): string[] {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed: unknown = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length) {
-        return parsed.filter((item): item is string => typeof item === 'string').slice(0, 20)
+      if (Array.isArray(parsed)) {
+        const codes = parsed
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => resolveCode(item)?.display)
+          .filter((code): code is string => code !== undefined)
+        return [...new Set(codes)].slice(0, 20)
       }
     }
   } catch {
-    /* 本地存储不可用时退回默认列表 */
+    /* 本地存储不可用时从空列表开始 */
   }
-  return [...DEFAULT_WATCHLIST]
+  return []
 }
 
 function saveWatchlist(list: string[]) {
@@ -72,7 +75,7 @@ const snapshot = ref<MarketSnapshot | null>(null)
 const quotes = ref<StockQuote[]>([])
 const analyses = ref<Array<StockAnalysis | null>>([])
 const candlesMap = ref<Record<string, Candle[]>>({})
-const selectedCode = ref('')
+const selectedCode = ref(watchlist.value[0] ?? '')
 
 const loading = ref(false)
 const stocksLoading = ref(false)
@@ -121,7 +124,6 @@ async function loadStocks(signal: AbortSignal) {
   quotes.value = quoteList
   analyses.value = []
   candlesMap.value = {}
-  if (!quoteList.some((item) => item.code === selectedCode.value)) selectedCode.value = quoteList[0]?.code ?? ''
 
   const results = await Promise.all(quoteList.map(async (quote) => {
     try {
@@ -182,6 +184,7 @@ function addCode(raw: string) {
     return
   }
   watchlist.value = [...watchlist.value, resolved.display]
+  if (!selectedCode.value) selectedCode.value = resolved.display
   saveWatchlist(watchlist.value)
   notice.value = null
   loadAll()
@@ -189,6 +192,10 @@ function addCode(raw: string) {
 
 function removeCode(code: string) {
   watchlist.value = watchlist.value.filter((item) => item !== code)
+  quotes.value = quotes.value.filter((item) => item.code !== code)
+  analyses.value = analyses.value.filter((item) => item?.code !== code)
+  delete candlesMap.value[code]
+  if (selectedCode.value === code) selectedCode.value = watchlist.value[0] ?? ''
   saveWatchlist(watchlist.value)
   notice.value = null
   loadAll()
@@ -251,6 +258,7 @@ onBeforeUnmount(() => {
         v-if="activeTab === 'dashboard'"
         v-model:new-code="newCode"
         :snapshot="snapshot"
+        :watchlist="watchlist"
         :quotes="quotes"
         :analyses="analyses"
         :candles-map="candlesMap"

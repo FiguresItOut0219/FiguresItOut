@@ -13,6 +13,7 @@ import type { Candle } from '@/services/indicators'
 
 const props = defineProps<{
   snapshot: MarketSnapshot | null
+  watchlist: string[]
   quotes: StockQuote[]
   analyses: Array<StockAnalysis | null>
   candlesMap: Record<string, Candle[]>
@@ -32,6 +33,11 @@ const newCode = defineModel<string>('newCode', { required: true })
 
 const selectedAnalysis = computed(() => props.analyses.find((item) => item?.code === props.selectedCode) ?? null)
 const selectedCandles = computed(() => props.candlesMap[props.selectedCode] ?? [])
+const watchRows = computed(() => props.watchlist.map((code) => ({
+  code,
+  quote: props.quotes.find((item) => item.code === code),
+  analysis: props.analyses.find((item) => item?.code === code),
+})))
 
 const breadthMax = computed(() => {
   const { breadth } = props.snapshot ?? { breadth: null }
@@ -86,7 +92,7 @@ function submitCode() {
       <div class="sw-panel sw-watch">
         <div class="sw-panel-head">
           <h2>自选股</h2>
-          <p>{{ quotes.length }} 只</p>
+          <p>{{ watchlist.length }} 只</p>
           <div class="sw-header-spacer" />
           <button class="sw-btn" type="button" :disabled="loading" @click="emit('refresh')">
             <RefreshCw :size="14" :class="{ 'sw-spin': loading }" />刷新
@@ -94,30 +100,32 @@ function submitCode() {
         </div>
 
         <div class="sw-watch-list">
-          <button
-            v-for="(quote, index) in quotes"
-            :key="quote.secid"
-            class="sw-watch-row"
-            type="button"
-            :aria-current="quote.code === selectedCode"
-            @click="emit('select', quote.code)"
-          >
-            <span class="sw-watch-name">{{ quote.name }}</span>
-            <span class="sw-watch-price" :class="quote.changePct > 0 ? 'sw-up' : quote.changePct < 0 ? 'sw-down' : 'sw-flat'">{{ quote.price }}</span>
-            <span class="sw-watch-code">{{ quote.code }} · {{ quote.market }}</span>
-            <span class="sw-watch-pct" :class="quote.changePct > 0 ? 'sw-up' : quote.changePct < 0 ? 'sw-down' : 'sw-flat'">{{ sign(quote.changePct) }}%</span>
-            <span class="sw-watch-score">
-              <span class="sw-watch-score-track">
-                <i
-                  :style="{
-                    width: `${analyses[index]?.score ?? 0}%`,
-                    background: (analyses[index]?.score ?? 0) >= 62 ? 'var(--up)' : (analyses[index]?.score ?? 0) >= 45 ? 'var(--muted)' : 'var(--down)',
-                  }"
-                />
+          <div v-if="!watchRows.length" class="sw-empty">暂无自选股，可在下方添加。</div>
+          <div v-for="{ code, quote, analysis } in watchRows" :key="code" class="sw-watch-entry">
+            <button class="sw-watch-row" type="button" :aria-current="code === selectedCode" @click="emit('select', code)">
+              <span class="sw-watch-name">{{ quote?.name ?? code }}</span>
+              <template v-if="quote">
+                <span class="sw-watch-price" :class="quote.changePct > 0 ? 'sw-up' : quote.changePct < 0 ? 'sw-down' : 'sw-flat'">{{ quote.price }}</span>
+                <span class="sw-watch-code">{{ code }} · {{ quote.market }}</span>
+                <span class="sw-watch-pct" :class="quote.changePct > 0 ? 'sw-up' : quote.changePct < 0 ? 'sw-down' : 'sw-flat'">{{ sign(quote.changePct) }}%</span>
+              </template>
+              <span v-else class="sw-watch-code">{{ stocksLoading ? '加载行情中' : '行情暂不可用' }}</span>
+              <span v-if="quote" class="sw-watch-score">
+                <span class="sw-watch-score-track">
+                  <i
+                    :style="{
+                      width: `${analysis?.score ?? 0}%`,
+                      background: (analysis?.score ?? 0) >= 62 ? 'var(--up)' : (analysis?.score ?? 0) >= 45 ? 'var(--muted)' : 'var(--down)',
+                    }"
+                  />
+                </span>
+                <b>{{ analysis ? `${analysis.score} · ${analysis.rating}` : stocksLoading ? '计算中' : '指标暂不可用' }}</b>
               </span>
-              <b>{{ analyses[index] ? `${analyses[index]!.score} · ${analyses[index]!.rating}` : stocksLoading ? '计算中' : '指标暂不可用' }}</b>
-            </span>
-          </button>
+            </button>
+            <button class="sw-btn" type="button" :aria-label="`移除自选股 ${code}`" @click="emit('remove', code)">
+              <Trash2 :size="14" />移除
+            </button>
+          </div>
         </div>
 
         <form class="sw-watch-form" @submit.prevent="submitCode">

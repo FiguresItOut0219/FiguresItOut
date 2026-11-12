@@ -347,5 +347,3 @@ export async function askLlm(
     }
   }
 }
-
-export const DEFAULT_WATCHLIST = ['600519', '300750', '601318', 'hk00700', 'AAPL']
